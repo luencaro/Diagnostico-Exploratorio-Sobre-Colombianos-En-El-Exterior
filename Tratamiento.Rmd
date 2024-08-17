@@ -1,0 +1,532 @@
+---
+title: "Descriptivo"
+author: "Eliana"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Diagnostico Exploratorio Sobre Colombianos En EL Exterior
+
+El censo “Colombianos registrados en el exterior” proporciona un conjunto de datos sobre los ciudadanos colombianos que se han registrado en consulados y embajadas fuera de Colombia. Estos datos, que fueron proporcionados por el Ministerio De Relaciones Exteriores, incluyen detalles demográficos como edad, género, y ubicación de residencia en el extranjero. El propósito principal es entender la distribución de los colombianos en el exterior, lo que puede ayudar en la planificación de políticas y servicios consulares.
+
+## **¿Qué hay en este conjunto de Datos?**
+
+Este estudio incluye las siguientes variables
+
+1.  **País**: Indica el país de residencia de la persona. Cuando no se tienen datos registrados se presenta el texto “(NO REGISTRA)”.
+
+2.  **Código ISO país**: ISO del país de residencia. Cuando no se tienen datos registrados se presenta el texto “(NO REGISTRA)”.
+
+3.  **Oficina de registro**: Consulado donde la persona realizó su registro consular. Cuando no se tienen datos registrados se presenta el texto “(NO REGISTRA)”.
+
+4.  **Grupo edad**: Grupo basado en la edad, como “Primera infancia” (0-5 años) o “Adulto Mayor” (60+).
+
+5.  **Edad (años)**: Edad de la persona, con -1 indicando datos faltantes.
+
+6.  **Área Conocimiento**: Área de conocimiento, con “(NO REGISTRA)” si falta.
+
+7.  **Sub Área Conocimiento**: Subárea específica, con “(NO REGISTRA)” si falta.
+
+8.  **Nivel Académico**: Nivel educativo, con “(NO REGISTRA)” si falta.
+
+9.  **Estado civil**: Estado civil, con “(NO REGISTRA)” si falta.
+
+10. **Género**: Género de la persona, con “(DESCONOCIDO)” si falta.
+
+11. **Etnia de la persona**: Etnia, con “(NO REGISTRA)” si falta.
+
+12. **Estatura (CM)**: Estatura en centímetros, con -1 indicando datos faltantes.
+
+13. **Localización**: Localización geográfica del ciudadano según el país de residencia.
+
+14. **Cantidad de personas**: Número de personas que cumplen con las condiciones demográficas especificadas.
+
+## Objetivos Del Estudio
+
+Analizar las características demográficas y educativas de ciudadanos colombianos en el exterior, con el fin de identificar patrones de residencia, nivel académico, estado civil, género, etnia y área de conocimiento, así como la calidad y completitud de los datos registrados en los consulados.
+
+## Importacion de Librerias
+
+```{r Importacion De Librerias}
+library(gridExtra)
+library(psych)
+library(ggcorrplot)
+library(readxl)
+library(dplyr)
+library(tidyverse)
+library(Amelia)
+library(janitor)
+library(magrittr)
+library(ggplot2)
+library(dplyr)
+library(pastecs)
+library(nortest)
+library(skimr)
+```
+
+## Importacion, Diagnostico y Tratamiento De Los Datos
+
+```{r Importacion De Datos}
+# Renombrar columnas con caracteres especiales
+names(Data) <- c("País", "Código.ISO.Pais", "Oficina.de.registro", "Grupo.edad", "Edad", 
+                    "Area.Conocimiento", "Sub.Area.Conocimiento", "Nivel.Académico", 
+                    "Estado.civil", "Género", "Etnia.de.la.persona", "Estatura", 
+                    "Localización", "Cantidad.de.personas")
+dim(D)
+summary(Data)
+str(Data)
+missmap(Data, main="Mapa de Datos Faltantes en Datos crudos")
+
+```
+
+Se observa que inicialmente se tienen 12/14 variables cualitativas y 2/14 cuantitativas, sin embargo, si observamos la variable estatura sabemos que la naturaleza de sus datos es cuantitativa, y esta siendo detectada como una variable cualitativa, por lo tanto se designará manualmente.
+
+### Procesamiento De Los Datos
+
+```{r Procesamiento De Los Datos}
+#Convertir la variable Estatura de caracter a numérico
+Data$Estatura <- as.numeric(Data$Estatura)
+NewData <- Data
+summary(NewData)
+str(NewData)
+
+```
+
+```{r}
+DataNA <- NewData
+
+DataNA$Estatura[DataNA$Estatura==-1]<-NA
+DataNA$Estatura[DataNA$Estatura>270]<-NA
+DataNA$Estatura[DataNA$Estatura<35]<-NA
+
+DataNA$Edad[DataNA$Edad==-1]<-NA
+DataNA$Edad[DataNA$Edad>121]<-NA
+
+# Reemplazar '(NO REGISTRA)' con NA en las columnas especificadas
+columns_to_replace <- c("País", "Código.ISO.Pais", "Oficina.de.registro", "Area.Conocimiento", "Sub.Area.Conocimiento", "Nivel.Académico", "Estado.civil", "Etnia.de.la.persona")
+DataNA[columns_to_replace] <- lapply(DataNA[columns_to_replace], function(x) {
+  x[x == '(NO REGISTRA)'] <- NA
+  return(x)
+})
+
+DataNA$Género[DataNA$Género=='DESCONOCIDO']<-NA
+
+# Calcular el número de NA por columna
+na_counts <- sapply(DataNA, function(x) sum(is.na(x)))
+
+# Calcular el número total de datos por columna
+total_values <- sapply(DataNA, function(x) length(x))
+
+# Calcular el porcentaje de NA por columna con respecto al total de datos en esa columna
+na_percentages_per_column <- (na_counts / total_values) * 100
+
+# Calcular el número total de datos en todo el data frame
+total_data_in_dataframe <- length(unlist(DataNA))
+
+# Calcular el porcentaje de NA en cada columna con respecto al total de datos en toda la muestra
+na_percentages_total <- (na_counts / total_data_in_dataframe) * 100
+
+# Crear un data frame con el número y porcentaje de NA por columna
+na_summary <- data.frame(
+  Variable = names(na_counts),
+  NA_Count = na_counts,
+  Total_Values = total_values,
+  NA_Percentage_Per_Column = na_percentages_per_column,
+  NA_Percentage_Total = na_percentages_total
+)
+
+# Convertir las columnas numéricas a formato decimal
+na_summary$NA_Count <- format(na_summary$NA_Count, scientific = FALSE)
+na_summary$Total_Values <- format(na_summary$Total_Values, scientific = FALSE)
+na_summary$NA_Percentage_Per_Column <- format(na_summary$NA_Percentage_Per_Column, scientific = FALSE)
+na_summary$NA_Percentage_Total <- format(na_summary$NA_Percentage_Total, scientific = FALSE)
+
+# Ordenar el data frame por porcentaje total de NA en orden descendente
+na_summary <- na_summary[order(-as.numeric(na_summary$NA_Percentage_Total)), ]
+
+# Ver el resumen
+print(na_summary)
+
+missmap(DataNA, main="Mapa de Datos Faltantes semiprocesados")
+```
+
+### Pruebas De Normalidad
+
+En este estudio, necesitamos verificar si nuestros datos siguen una distribución normal. Como no conocemos la media ni la desviación estándar de la población, la prueba de Lilliefors es ideal porque permite evaluar la normalidad sin asumir estos parámetros.
+
+```{r Test De Normalidad}
+clean_data <- na.omit(DataNA$Estatura)
+
+# Realizar la prueba de normalidad (Lilliefors)
+resultado_prueba <- lillie.test(clean_data)
+
+print(resultado_prueba)
+
+clean_data_Edad <- na.omit(DataNA$Edad)
+
+# Realizar la prueba de normalidad (Lilliefors)
+resultado_prueba_Edad <- lillie.test(clean_data_Edad)
+
+print(resultado_prueba_Edad)
+```
+
+```{r}
+# Nivel de significancia
+nivel_significancia <- 0.05
+
+# Evaluar la hipótesis
+if (!is.na(resultado_prueba$p.value) && resultado_prueba$p.value < nivel_significancia) {
+  print("Se rechaza la hipótesis nula, lo que sugiere que la variable Estatura no sigue una distribución normal.")
+} else {
+  print("No se rechaza la hipótesis nula, lo que sugiere que la variable Estatura sigue una distribución normal.")
+}
+
+# Evaluar la hipótesis
+if (!is.na(resultado_prueba_Edad$p.value) && resultado_prueba_Edad$p.value < nivel_significancia) {
+  print("Se rechaza la hipótesis nula, lo que sugiere que la variable Edad no sigue una distribución normal.")
+} else {
+  print("No se rechaza la hipótesis nula, lo que sugiere que la variable Edad sigue una distribución normal.")
+}
+```
+
+```{r QQ-Plots}
+# Configurar el área de gráficos para mostrar 1 fila y 3 columnas
+par(mfrow = c(1, 3)) 
+
+# Crear el gráfico QQ para la variable Estatura
+qqnorm(DataNA$Estatura, main = "QQ Plot para la variable Estatura")
+qqline(DataNA$Estatura, col = "red", lwd = 2)
+
+# Crear el gráfico QQ para la variable Edad
+qqnorm(DataNA$Edad, main = "QQ Plot para la variable Edad")
+qqline(DataNA$Edad, col = "red", lwd = 2)
+
+# Crear el gráfico QQ para la Cantidad de personas
+qqnorm(DataNA$Cantidad.de.personas, main = "QQ Plot para la Cantidad de personas")
+qqline(DataNA$Cantidad.de.personas, col = "red", lwd = 2)
+
+# Restablecer la configuración de gráficos a la predeterminada (opcional)
+par(mfrow = c(1, 1))
+```
+
+```{r}
+# Definir la función para aplicar el test Lilliefors
+lilliefors_test <- function(x) {
+  # Eliminar NA antes de realizar la prueba
+  clean_data <- na.omit(x)
+  # Aplicar el test Lilliefors y extraer el p-value
+  result <- lillie.test(clean_data)
+  return(result$p.value)
+}
+
+# Aplicar la prueba de Lilliefors a todas las variables numéricas
+normality_tests <- DataNA %>%
+  summarise(across(where(is.numeric), ~ lilliefors_test(.x))) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "P-Value")
+
+# Agregar una columna indicando si los datos son normales o no
+normality_tests <- normality_tests %>%
+  mutate(Normal = ifelse(`P-Value` < 0.05, "No", "Sí"))
+
+# Mostrar los resultados
+print(normality_tests)
+```
+
+### LimpiezaDe Datos
+
+```{r Limpieza}
+# Función para rellenar variables cuantitativas con la mediana
+rellenar_con_mediana <- function(x) {
+  x[is.na(x)] <- median(x, na.rm = TRUE)
+  return(x)
+}
+
+# Función para calcular la moda
+calcular_moda <- function(x) {
+  uniq_vals <- unique(na.omit(x))
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Función para rellenar NA en variables cualitativas con la moda
+rellenar_con_moda <- function(x) {
+  moda <- calcular_moda(x)
+  x[is.na(x)] <- moda
+  return(x)
+}
+
+DataNA <- DataNA %>%
+  mutate(across(where(is.numeric), rellenar_con_mediana)) %>%
+  mutate(across(where(is.character), rellenar_con_moda)) %>%
+  mutate(across(where(is.factor), ~ as.character(.) %>% rellenar_con_moda() %>% as.factor()))
+
+```
+
+```{r Visualizacion De Datos Limpios}
+names(DataNA)
+summary(DataNA)
+str(DataNA)
+dim(DataNA)
+# Verificar que no haya NA en el nuevo dataframe
+missmap(DataNA, main="Mapa de Datos Faltantes")
+```
+
+```{r QQ-Plot Limpios}
+# Configurar el área de gráficos para mostrar 1 fila y 3 columnas
+par(mfrow = c(1, 3)) 
+
+# Crear el gráfico QQ para la variable Estatura
+qqnorm(DataNA$Estatura, main = "QQ Plot para la variable Estatura")
+qqline(DataNA$Estatura, col = "red", lwd = 2)
+
+# Crear el gráfico QQ para la variable Edad
+qqnorm(DataNA$Edad, main = "QQ Plot para la variable Edad")
+qqline(DataNA$Edad, col = "red", lwd = 2)
+
+# Crear el gráfico QQ para la Cantidad de personas
+qqnorm(DataNA$Cantidad.de.personas, main = "QQ Plot para la Cantidad de personas")
+qqline(DataNA$Cantidad.de.personas, col = "red", lwd = 2)
+```
+
+```{r Curvas de Normalidad}
+# Restablecer la configuración de gráficos a la predeterminada (opcional)
+par(mfrow = c(1, 1))
+
+# Eliminar los NA de la columna Estatura (antes de la limpieza)
+estatura <- na.omit(Data$Estatura)
+
+# Graficar el histograma
+hist(estatura, breaks = 30, probability = TRUE, main = "Histograma con Curva Normal", xlab = "Estatura", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+lines(density(estatura), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura <- mean(estatura)
+sd_estatura <- sd(estatura)
+
+# Crear la secuencia de valores para la curva normal
+x <- seq(min(estatura), max(estatura), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y <- dnorm(x, mean = mean_estatura, sd = sd_estatura)
+lines(x, y, col = "blue", lwd = 2)
+
+```
+
+```{r}
+# Eliminar los NA de la columna Estatura (después de la limpieza)
+estatura <- na.omit(DataNA$Estatura)
+
+# Graficar el histograma
+hist(estatura, breaks = 30, probability = TRUE, main = "Histograma con Curva Normal", xlab = "Estatura", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+lines(density(estatura), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura <- mean(estatura)
+sd_estatura <- sd(estatura)
+
+# Crear la secuencia de valores para la curva normal
+x <- seq(min(estatura), max(estatura), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y <- dnorm(x, mean = mean_estatura, sd = sd_estatura)
+lines(x, y, col = "blue", lwd = 2)
+```
+
+```{r}
+# Configurar la disposición de las gráficas en una fila y dos columnas
+par(mfrow = c(1, 2))
+
+# Primera gráfica (antes de la limpieza)
+# Eliminar los NA de la columna Estatura (antes de la limpieza)
+estatura_antes <- na.omit(Data$Estatura)
+
+# Graficar el histograma
+hist(estatura_antes, breaks = 30, probability = TRUE, main = "Antes de la Limpieza", xlab = "Estatura", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+#lines(density(estatura_antes), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura_antes <- mean(estatura_antes)
+sd_estatura_antes <- sd(estatura_antes)
+
+# Crear la secuencia de valores para la curva normal
+x_antes <- seq(min(estatura_antes), max(estatura_antes), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y_antes <- dnorm(x_antes, mean = mean_estatura_antes, sd = sd_estatura_antes)
+lines(x_antes, y_antes, col = "blue", lwd = 2)
+
+# Segunda gráfica (después de la limpieza)
+# Eliminar los NA de la columna Estatura (después de la limpieza)
+estatura_despues <- na.omit(DataNA$Estatura)
+
+# Graficar el histograma
+hist(estatura_despues, breaks = 30, probability = TRUE, main = "Después de la Limpieza", xlab = "Estatura", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+#lines(density(estatura_despues), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura_despues <- mean(estatura_despues)
+sd_estatura_despues <- sd(estatura_despues)
+
+# Crear la secuencia de valores para la curva normal
+x_despues <- seq(min(estatura_despues), max(estatura_despues), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y_despues <- dnorm(x_despues, mean = mean_estatura_despues, sd = sd_estatura_despues)
+lines(x_despues, y_despues, col = "blue", lwd = 2)
+```
+
+```{r}
+# Restablecer la disposición de las gráficas a una única por ventana
+par(mfrow = c(1, 1))
+```
+
+### Normalizacion De Los Datos
+
+Se ralizara la normalizacion de los datos mediante transformacion logaritmica. En la normalización de datos solo se tomarán en cuenta las variables Edad y Cantidad de personas, ya que debido al alto porcentaje de datos irregulares en la variable estatura, se ha decidio sacarla del estudio. Veamos entonces el comportamiento de las variables Edad y Cantidad de personas.
+
+```{r}
+# Configurar la disposición de las gráficas en una fila y dos columnas
+par(mfrow = c(1, 2))
+
+# Eliminar los NA de la columna Edad
+estatura_antes <- na.omit(Data$Edad)
+
+# Graficar el histograma
+hist(estatura_antes, breaks = 30, probability = TRUE, main = "Distribución Edad", xlab = "Edad", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+#lines(density(estatura_antes), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura_antes <- mean(estatura_antes)
+sd_estatura_antes <- sd(estatura_antes)
+
+# Crear la secuencia de valores para la curva normal
+x_antes <- seq(min(estatura_antes), max(estatura_antes), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y_antes <- dnorm(x_antes, mean = mean_estatura_antes, sd = sd_estatura_antes)
+lines(x_antes, y_antes, col = "blue", lwd = 2)
+
+
+# Eliminar los NA de la columna cantidad de personas
+estatura_despues <- na.omit(DataNA$Cantidad.de.personas)
+
+# Graficar el histograma
+hist(estatura_despues, breaks = 30, probability = TRUE, main = "Distribución Cantidad de personas", xlab = "Cantidad de personas", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+#lines(density(estatura_despues), col = "red", lwd = 2)
+
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura_despues <- mean(estatura_despues)
+sd_estatura_despues <- sd(estatura_despues)
+
+# Crear la secuencia de valores para la curva normal
+x_despues <- seq(min(estatura_despues), max(estatura_despues), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y_despues <- dnorm(x_despues, mean = mean_estatura_despues, sd = sd_estatura_despues)
+lines(x_despues, y_despues, col = "blue", lwd = 2)
+
+```
+
+```{r}
+# Restablecer la disposición de las gráficas a una única por ventana
+par(mfrow = c(1, 1))
+```
+
+```{r Prueba LiLi para Edad Limpio}
+clean_data <- na.omit(DataNA$Edad)
+
+# Realizar la prueba de normalidad (Lilliefors)
+resultado_prueba <- lillie.test(clean_data)
+
+print(resultado_prueba)
+```
+
+```{r Prueba LiLi para Personas Limpio}
+clean_data <- na.omit(DataNA$Cantidad.de.personas)
+
+# Realizar la prueba de normalidad (Lilliefors)
+resultado_prueba <- lillie.test(clean_data)
+
+print(resultado_prueba)
+```
+
+```{r Trabsformacion Logaritmica Edad}
+# Aplicar la transformación logarítmica a la columna Edad (sumar 1 para evitar problemas con log(0))
+DataNA$Transf_Log <- log(DataNA$Edad + 1)
+
+# Configurar el área de gráficos para mostrar dos histogramas lado a lado
+par(mfrow = c(1, 2))  
+
+# Graficar el histograma original de la variable Edad
+hist(DataNA$Edad, main = "Histograma Original", xlab = "Edad", col = "lightblue", breaks = 20)
+
+# Graficar el histograma de la variable transformada logarítmicamente
+hist(DataNA$Transf_Log, main = "Histograma Transformado (Log)", xlab = "Edad Transformada", col = "lightgreen", breaks = 20)
+```
+
+```{r}
+# Restaurar configuración de gráficos a una sola ventana (opcional)
+par(mfrow = c(1, 1))
+```
+
+#### Prueba Lilifors Para La Edad Despues De La Transformacion Logaritmica
+
+```{r Prueba LiLi para Edad_Log}
+# Aplicar la prueba de Lilliefors a la variable original Edad
+lilliefors_original <- lillie.test(DataNA$Edad)
+
+# Aplicar la prueba de Lilliefors a la variable transformada Transf_Log
+lilliefors_transf_log <- lillie.test(DataNA$Transf_Log)
+
+# Imprimir los resultados de la prueba
+print(lilliefors_original)
+print(lilliefors_transf_log)
+```
+
+#### Prueba Lilifors Para La Variable Cantidad De Personas Despues De La Transformacion Logaritmica
+
+```{r Tranformacio Log Para personas}
+# Aplicar la transformación logarítmica a la columna Edad (sumar 1 para evitar problemas con log(0))
+DataNA$Transf_Log <- log(DataNA$Cantidad.de.personas + 1)
+
+# Configurar el área de gráficos para mostrar dos histogramas lado a lado
+par(mfrow = c(1, 2))  
+
+# Graficar el histograma original de la variable Edad
+hist(DataNA$Cantidad.de.personas, main = "Histograma Original", xlab = "Cantidad.de.personas", col = "lightblue", breaks = 20)
+
+# Graficar el histograma de la variable transformada logarítmicamente
+hist(DataNA$Transf_Log, main = "Histograma Transformado (Log)", xlab = "Cantidad.de.personas transformada", col = "lightgreen", breaks = 20)
+```
+
+```{r}
+# Restaurar configuración de gráficos a una sola ventana (opcional)
+par(mfrow = c(1, 1))
+```
+
+```{r Prueba LiLi para Personas_Log}
+# Aplicar la prueba de Lilliefors a la variable original Cantidad.de.personas
+lilliefors_original <- lillie.test(DataNA$Cantidad.de.personas)
+
+# Aplicar la prueba de Lilliefors a la variable transformada Transf_Log
+lilliefors_transf_log <- lillie.test(DataNA$Transf_Log)
+
+# Imprimir los resultados de la prueba
+print(lilliefors_original)
+
+print(lilliefors_transf_log)
+```
+
+Notamos que la transformación logarítmica no ha logrado mejorar el ajuste a una distribución normal para ninguna de las variables.
