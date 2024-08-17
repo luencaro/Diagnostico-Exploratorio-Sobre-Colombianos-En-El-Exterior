@@ -1,6 +1,6 @@
 ---
 title: "Descriptivo"
-author: "Eliana"
+author: "Luis, Andres, Natalia, Jose, Eliana"
 date: "`r Sys.Date()`"
 output: html_document
 ---
