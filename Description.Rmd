@@ -7,11 +7,13 @@ output: html_document
 ```{r Importacion De Librerias}
 install.packages("kableExtra")
 install.packages("ggthemes")
+install.packages("plotly")
 library(kableExtra)
 library(ggplot2)
 library(dplyr)
 library(gridExtra)
-library(ggthemes) 
+library(ggthemes)
+library(plotly)
 ```
 
 #Analisis Univariado.
@@ -38,7 +40,7 @@ top_20_paises <- pais_frecuencia %>% top_n(20, wt = Frecuencia)
 
 # Gráfico de barras ordenadas para los top 20 países
 ggplot(top_20_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
-  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_bar(stat = "identity", fill = "#3FA0FFFF") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10)) +
   labs(title = "Top 20 Países con Más Colombianos Registrados", x = "País", y = "Cantidad")
 
@@ -47,7 +49,7 @@ ggplot(top_20_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
 ```{r}
 # Gráfico de barras ordenadas para los top 20 países con escala logarítmica en Y
 ggplot(top_20_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
-  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_bar(stat = "identity", fill = "#3FA0FFFF") +
   scale_y_log10() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10)) +
   labs(title = "Top 20 Países con Más Colombianos Registrados (Escala Logarítmica)", 
@@ -66,7 +68,7 @@ print(top_3_paises)
 #Hice gráfico de barras, pero no se si quieran uno circular.
 
 ggplot(top_3_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
-  geom_bar(stat = "identity", fill = "skyblue") +  # Color azul personalizado
+  geom_bar(stat = "identity", fill = "#3FA0FFFF") +  # Color azul personalizado
   geom_text(aes(label = Frecuencia), vjust = -0.3) +  # Etiquetas encima de las barras
   labs(title = "Top 3 Países con Más Colombianos Registrados", 
        x = "País", 
@@ -97,7 +99,7 @@ Grafico Barras Grupo Edad.
 ```{r}
 #Grafico de Barras
 ggplot(DataNA, aes(x = Grupo.edad)) +
-  geom_bar(fill = "#0073C2FF", color = "black") +  # Color de las barras y bordes
+  geom_bar(fill = "#3FA0FFFF", color = "black") +  # Color de las barras y bordes
   labs(
     title = "Distribución por Grupo de Edad",
     x = "Grupo de Edad",
@@ -178,7 +180,7 @@ print(resumen_edad_total)
 
 # Histograma de la variable Edad en el conjunto de datos completo
 ggplot(DataNA, aes(x = Edad)) +
-  geom_histogram(binwidth = 5, fill = "#0073C2FF", color = "black") +
+  geom_histogram(binwidth = 5, fill = "#3FA0FFFF", color = "black") +
   labs(
     title = "Distribución de la Edad (Total)",
     x = "Edad (años)",
@@ -194,7 +196,7 @@ ggplot(DataNA, aes(x = Edad)) +
 
 # Boxplot horizontal para la variable Edad en el conjunto de datos completo
 ggplot(DataNA, aes(x = Edad)) +
-  geom_boxplot(fill = "#0073C2FF", color = "black", outlier.color = "red", outlier.shape = 16, outlier.size = 2) +
+  geom_boxplot(fill = "#3FA0FFFF", color = "black", outlier.color = "red", outlier.shape = 16, outlier.size = 2) +
   labs(
     title = "Distribución de la Edad",
     x = "Edad (años)"
@@ -230,7 +232,7 @@ print(resumen_edad_top)
 
 # Histograma de la variable Edad en el top 3 de países
 ggplot(Data_top3, aes(x = Edad)) +
-  geom_histogram(binwidth = 5, fill = "#0073C2FF", color = "black") +
+  geom_histogram(binwidth = 5, fill = "#3FA0FFFF", color = "black") +
   labs(
     title = "Distribución de la Edad en el Top 3 de Países",
     x = "Edad (años)",
@@ -245,7 +247,7 @@ ggplot(Data_top3, aes(x = Edad)) +
 
 # Boxplot horizontal para la variable Edad en el top 3 de países
 ggplot(Data_top3, aes(x = Edad)) +
-  geom_boxplot(fill = "#0073C2FF", color = "black", outlier.color = "red", outlier.shape = 16, outlier.size = 2) +
+  geom_boxplot(fill = "#3FA0FFFF", color = "black", outlier.color = "red", outlier.shape = 16, outlier.size = 2) +
   labs(
     title = "Distribución de la Edad en el Top 3 de Países",
     x = "Edad (años)"
@@ -286,7 +288,7 @@ kable(tabla_area_conocimiento, col.names = c("Área de Conocimiento", "Frecuenci
 
 # Gráfico de barras
 ggplot(DataNA, aes(x = reorder(Area.Conocimiento, -table(Area.Conocimiento)[Area.Conocimiento]), y = ..count..)) +
-  geom_bar(fill = "#0073C2FF", color = "black") +
+  geom_bar(fill = "#3FA0FFFF", color = "black") +
   theme_minimal() +
   labs(title = "Distribución por Área de Conocimiento",
        x = "Área de Conocimiento",
@@ -319,7 +321,7 @@ kable(tabla_area_conocimiento, col.names = c("Área de Conocimiento", "Frecuenci
 ```{r}
 # Gráfico de barras
 ggplot(Data_top3, aes(x = reorder(Area.Conocimiento, -table(Area.Conocimiento)[Area.Conocimiento]), y = ..count..)) +
-  geom_bar(fill = "#0073C2FF", color = "black") +
+  geom_bar(fill = "#3FA0FFFF", color = "black") +
   theme_minimal() +
   labs(title = "Distribución por Área de Conocimiento",
        x = "Área de Conocimiento",
@@ -465,24 +467,86 @@ ggplot(Data_top3, aes(x = "", fill = Nivel.Académico)) +
 ```
 
 Estado Civil (Total).
+Tabla.
 ```{r}
-# Tabla de frecuencia
-table(DataNA$Estado.civil)
+# Tabla de frecuencia y porcentaje para Estado Civil
+tabla_estado_civil <- DataNA%>%
+  group_by(Estado.civil) %>%
+  summarise(
+    Frecuencia = n(),
+    Porcentaje = round((n() / nrow(DataNA)) * 100, 2)
+  ) %>%
+  arrange(desc(Frecuencia))
 
-# Gráfico de barras
-ggplot(DataNA, aes(x = Estado.civil)) +
-  geom_bar() +
-  labs(title = "Distribución por Estado Civil", x = "Estado Civil", y = "Cantidad")
+# Mostrar la tabla usando kable
+kable(tabla_estado_civil, col.names = c("Estado Civil", "Frecuencia", "Porcentaje (%)"),
+      caption = "Distribución por Estado Civil") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(2, width = "5em") %>%
+  column_spec(3, width = "5em")
 
 ```
+
+```{r}
+# Gráfico de barras
+ggplot(DataNA, aes(x = reorder(Estado.civil, -table(Estado.civil)[Estado.civil]))) +
+  geom_bar(fill = "#3FA0FFFF", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribución por Estado Civil (Total)",
+       x = "Estado Civil",
+       y = "Cantidad") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10)
+  )
+
+```
+
+
 Estado Civil (Top 3).
 ```{r}
+# Gráfico de barras para Estado Civil en el top 3 de países
+ggplot(Data_top3, aes(x = reorder(Estado.civil, -table(Estado.civil)[Estado.civil]), fill = País)) +
+  geom_bar(position = "dodge", color = "black") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Distribución por Estado Civil en el Top 3 de Países",
+       x = "Estado Civil",
+       y = "Cantidad",
+       fill = "País") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10),
+    legend.position = "top"
+  )
 
 ```
 Género (Total).
 ```{r}
-# Tabla de frecuencia
-table(DataNA$Género)
+# Tabla de frecuencia y porcentaje para Género
+tabla_genero <- DataNA %>%
+  group_by(Género) %>%
+  summarise(
+    Frecuencia = n(),
+    Porcentaje = round((n() / nrow(DataNA)) * 100, 2)
+  ) %>%
+  arrange(desc(Frecuencia))
+
+# Mostrar la tabla usando kable
+kable(tabla_genero, col.names = c("Género", "Frecuencia", "Porcentaje (%)"),
+      caption = "Distribución por Género") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(2, width = "5em") %>%
+  column_spec(3, width = "5em")
+
 
 # Gráfico de barras
 ggplot(DataNA, aes(x = Género)) +
@@ -490,8 +554,51 @@ ggplot(DataNA, aes(x = Género)) +
   labs(title = "Distribución por Género", x = "Género", y = "Cantidad")
 
 ```
+
+
+```{r}
+# Calcular frecuencias y porcentajes
+data_summary <- DataNA %>%
+  group_by(Género) %>%
+  summarise(Frecuencia = n()) %>%
+  mutate(Porcentaje = round((Frecuencia / sum(Frecuencia)) * 100, 2))
+
+# Crear el gráfico de pastel
+fig <- plot_ly(data_summary, 
+                labels = ~Género, 
+                values = ~Frecuencia, 
+                type = 'pie',
+                textinfo = 'label+percent',
+                marker = list(colors = c("#DD75D3FF", "#7E8CF3FF", "#719F47FF")),
+                showlegend = TRUE) %>%
+  layout(title = 'Distribución por Género',
+         xaxis = list(showgrid = TRUE, zeroline = TRUE),
+         yaxis = list(showgrid = TRUE, zeroline = TRUE))
+
+# Mostrar el gráfico
+fig
+
+```
+
 Género (Top 3).
 ```{r}
+# Gráfico de barras apiladas para Género en el top 3 de países
+ggplot(Data_top3, aes(x = reorder(Género, -table(Género)[Género]), fill = País)) +
+  geom_bar(position = "dodge", color = "black") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Distribución por Género en el Top 3 de Países",
+       x = "Género",
+       y = "Cantidad",
+       fill = "País") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    legend.position = "top"
+  )
 
 ```
 Etnia de la Persona (Total).
@@ -499,14 +606,44 @@ Etnia de la Persona (Total).
 # Tabla de frecuencia
 table(DataNA$Etnia.de.la.persona)
 
-# Gráfico de barras
-ggplot(DataNA, aes(x = Etnia.de.la.persona)) +
-  geom_bar() +
-  labs(title = "Distribución por Etnia", x = "Etnia", y = "Cantidad")
+# Gráfico de barras horizontal para Etnia
+ggplot(DataNA, aes(x = reorder(Etnia.de.la.persona, -table(Etnia.de.la.persona)[Etnia.de.la.persona]))) +
+  geom_bar(fill = "#719F47FF", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribución por Etnia de la Persona",
+       x = "Cantidad",
+       y = "Etnia") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10)
+  ) +
+  coord_flip()  # Voltear para una lectura más fácil
+
 
 ```
 Etnia de la Persona (Top 3).
 ```{r}
+# Gráfico de barras apiladas horizontal para Etnia en el top 3 de países
+ggplot(Data_top3, aes(x = reorder(Etnia.de.la.persona, -table(Etnia.de.la.persona)[Etnia.de.la.persona]), fill = País)) +
+  geom_bar(position = "dodge", color = "black") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Distribución por Etnia en el Top 3 de Países",
+       x = "Cantidad",
+       y = "Etnia",
+       fill = "País") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    legend.position = "top"
+  ) +
+  coord_flip()  # Voltear para una lectura más fácil
 
 ```
 Cantidad de Personas (Total).
