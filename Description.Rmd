@@ -182,7 +182,7 @@ Data_top3 <- DataNA %>%
 # Tabla
 ggplot(Data_top3, aes(x = Grupo.edad, fill = País)) +
   geom_bar(position = "dodge", stat = "count") +
-  labs(title = "Distribución por Edad en los Top 3 Países",
+  labs(title = "Distribución por Grupo de Edad en los Top 3 Países",
        x = "Grupo de Edad",
        y = "Cantidad de Personas") +
   scale_fill_brewer(palette = "Set1") +
