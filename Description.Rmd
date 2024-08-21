@@ -3,7 +3,11 @@ title: "Descriptivo"
 author: "Luis, Andres, Natalia, Jose, Eliana"
 date: "`r Sys.Date()`"
 output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
+
 ```{r Importacion De Librerias}
 #install.packages("kableExtra")
 #install.packages("ggthemes")
@@ -29,11 +33,32 @@ num_paises <- length(unique(DataNA$País))
 print(paste("El numero total de paises es:" , num_paises))
 
 ```
-Ya la cantidad de paises que se encuentran en la base de datos es numerosa, no se
-verá bien en un gráfico, por lo tanto solo visualizaremos el top 20.
+
+Ya la cantidad de paises que se encuentran en la base de datos es
+numerosa, no se verá bien en un gráfico, por lo tanto solo
+visualizaremos el top 20.
 
 Pais (Top 20).
+
 ```{r}
+# Filtrar los datos para los 10 países con más registros
+top_10_paises <- DataNA %>%
+  count(País) %>%
+  top_n(10, n) %>%
+  pull(País)
+
+Data_top10 <- DataNA %>%
+  filter(País %in% top_10_paises)
+
+#Filtrar los top 3 países
+top_3_paises <- DataNA %>%
+  count(País) %>%
+  top_n(3, n) %>%
+  pull(País)
+
+Data_top3 <- DataNA %>%
+  filter(País %in% top_3_paises)
+
 # Calcular frecuencias de países
 pais_frecuencia <- DataNA %>%
   group_by(País) %>%
@@ -51,6 +76,7 @@ ggplot(top_20_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
 
 
 ```
+
 ```{r}
 # Gráfico de barras ordenadas para los top 20 países con escala logarítmica en Y
 ggplot(top_20_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
@@ -63,6 +89,7 @@ ggplot(top_20_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
 ```
 
 Pais(Top 3).
+
 ```{r}
 # Obtener el top 3 de países
 top_3_paises <- pais_frecuencia %>% top_n(3, wt = Frecuencia)
@@ -85,6 +112,7 @@ ggplot(top_3_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
 ```
 
 Grupos de edad (Total).
+
 ```{r}
 
 tabla_edad <- DataNA %>%
@@ -118,8 +146,8 @@ ggplot(DataNA, aes(x = Grupo.edad)) +
 
 ```
 
-Grupos de edad (Top 3).
-Tabla top 3.
+Grupos de edad (Top 3). Tabla top 3.
+
 ```{r}
 
 # Crear la tabla de frecuencias y porcentajes por grupo de edad para los top 3 países
@@ -135,7 +163,9 @@ kable(tabla_gedad_top3, col.names = c("Grupo de Edad", "Frecuencia", "Porcentaje
 
 
 ```
+
 Grafico de Barras.
+
 ```{r}
 
 # Paso 1: Encontrar los 3 países con la mayor cantidad de personas
@@ -167,6 +197,7 @@ ggplot(Data_top3, aes(x = Grupo.edad, fill = País)) +
 ```
 
 Edad (Total).
+
 ```{r}
 # Resumen estadístico de la variable Edad en el conjunto de datos completo
 resumen_edad_total <- DataNA %>%
@@ -217,7 +248,9 @@ ggplot(DataNA, aes(x = Edad)) +
 
 
 ```
+
 Edad (Top 3).
+
 ```{r}
 
 # Resumen estadístico de la variable Edad en el top 3 de países
@@ -268,7 +301,9 @@ ggplot(Data_top3, aes(x = Edad)) +
 
 
 ```
+
 Área de Conocimiento (Total).
+
 ```{r}
 
 # Calcular la tabla de frecuencia y porcentaje
@@ -289,6 +324,7 @@ kable(tabla_area_conocimiento, col.names = c("Área de Conocimiento", "Frecuenci
   column_spec(3, width = "5em")
 
 ```
+
 ```{r}
 
 # Gráfico de barras
@@ -306,6 +342,7 @@ ggplot(DataNA, aes(x = reorder(Area.Conocimiento, -table(Area.Conocimiento)[Area
 ```
 
 Área de Conocimiento (Top 3).
+
 ```{r}
 tabla_area_conocimiento <- Data_top3 %>%
   group_by(Area.Conocimiento) %>%
@@ -323,6 +360,7 @@ kable(tabla_area_conocimiento, col.names = c("Área de Conocimiento", "Frecuenci
   column_spec(2, width = "5em") %>%
   column_spec(3, width = "5em")
 ```
+
 ```{r}
 # Gráfico de barras
 ggplot(Data_top3, aes(x = reorder(Area.Conocimiento, -table(Area.Conocimiento)[Area.Conocimiento]), y = ..count..)) +
@@ -336,10 +374,8 @@ ggplot(Data_top3, aes(x = reorder(Area.Conocimiento, -table(Area.Conocimiento)[A
   )
 ```
 
+Nivel Académico (Total). Tabla.
 
-
-Nivel Académico (Total).
-Tabla.
 ```{r}
 # Calcular la tabla de frecuencia
 tabla_frecuencia <- DataNA %>%
@@ -360,6 +396,7 @@ kable(tabla_frecuencia, col.names = c("Nivel Académico", "Frecuencia", "Porcent
 ```
 
 Barras apilado.
+
 ```{r}
 # Definir la paleta de colores
 paleta_colores <- c(
@@ -413,8 +450,9 @@ ggplot(DataNA, aes(x = "", fill = Nivel.Académico)) +
 
 
 ```
-Nivel Académico (Top 3).
-Tabla.
+
+Nivel Académico (Top 3). Tabla.
+
 ```{r}
 # Calcular la tabla de frecuencia
 tabla_frecuencia <- Data_top3 %>%
@@ -435,6 +473,7 @@ kable(tabla_frecuencia, col.names = c("Nivel Académico", "Frecuencia", "Porcent
 ```
 
 Apilado.
+
 ```{r}
 # Ordenar los niveles académicos de menor a mayor
 Data_top3 <- Data_top3 %>%
@@ -471,8 +510,8 @@ ggplot(Data_top3, aes(País, fill = Nivel.Académico)) +
 
 ```
 
-Estado Civil (Total).
-Tabla.
+Estado Civil (Total). Tabla.
+
 ```{r}
 # Tabla de frecuencia y porcentaje para Estado Civil
 tabla_estado_civil <- DataNA%>%
@@ -511,8 +550,8 @@ ggplot(DataNA, aes(x = reorder(Estado.civil, -table(Estado.civil)[Estado.civil])
 
 ```
 
-
 Estado Civil (Top 3).
+
 ```{r}
 # Gráfico de barras para Estado Civil en el top 3 de países
 ggplot(Data_top3, aes(x = reorder(Estado.civil, -table(Estado.civil)[Estado.civil]), fill = País)) +
@@ -533,7 +572,9 @@ ggplot(Data_top3, aes(x = reorder(Estado.civil, -table(Estado.civil)[Estado.civi
   )
 
 ```
+
 Género (Total).
+
 ```{r}
 # Tabla de frecuencia y porcentaje para Género
 tabla_genero <- DataNA %>%
@@ -560,7 +601,6 @@ ggplot(DataNA, aes(x = Género)) +
 
 ```
 
-
 ```{r}
 # Calcular frecuencias y porcentajes
 data_summary <- DataNA %>%
@@ -586,6 +626,7 @@ fig
 ```
 
 Género (Top 3).
+
 ```{r}
 # Gráfico de barras apiladas para Género en el top 3 de países
 ggplot(Data_top3, aes(x = reorder(Género, -table(Género)[Género]), fill = País)) +
@@ -606,7 +647,9 @@ ggplot(Data_top3, aes(x = reorder(Género, -table(Género)[Género]), fill = Pa�
   )
 
 ```
+
 Etnia de la Persona (Total).
+
 ```{r}
 # Tabla de frecuencia
 table(DataNA$Etnia.de.la.persona)
@@ -629,7 +672,9 @@ ggplot(DataNA, aes(x = reorder(Etnia.de.la.persona, -table(Etnia.de.la.persona)[
 
 
 ```
+
 Etnia de la Persona (Top 3).
+
 ```{r}
 # Gráfico de barras apiladas horizontal para Etnia en el top 3 de países
 ggplot(Data_top3, aes(x = reorder(Etnia.de.la.persona, -table(Etnia.de.la.persona)[Etnia.de.la.persona]), fill = País)) +
@@ -653,23 +698,15 @@ ggplot(Data_top3, aes(x = reorder(Etnia.de.la.persona, -table(Etnia.de.la.person
 ```
 
 ```{r}
-# Filtrar los datos para los 10 países con más registros
-top_10_paises <- DataNA %>%
-  count(País) %>%
-  top_n(10, n) %>%
-  pull(País)
 
-Data_top10 <- DataNA %>%
-  filter(País %in% top_10_paises)
 ```
 
+#Analisis Multivariado. Relación entre Género y Nivel Académico Esto
+está pendiente, no confio en el resultado, me parece que tenemos un
+falso positivo, Error tipo 1, plis soluciones. Hipótesis: Existen
+diferencias significativas en el nivel académico alcanzado entre
+géneros.
 
-#Analisis Multivariado.
-Relación entre Género y Nivel Académico
-Esto está pendiente, no confio en el resultado, me parece que tenemos un falso positivo,
-Error tipo 1, plis soluciones.
-Hipótesis:
-Existen diferencias significativas en el nivel académico alcanzado entre géneros.
 ```{r}
 # Tabla de contingencia
 tabla_genero_academico <- table(DataNA$Género, DataNA$Nivel.Académico)
@@ -689,9 +726,11 @@ ggplot(DataNA, aes(x = Nivel.Académico, fill = Género)) +
        y = "Cantidad") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-Relación entre País y Área de Conocimiento
-Hipótesis:
-Ciertos países tienen una mayor concentración de personas en determinadas áreas de conocimiento.
+
+Relación entre País y Área de Conocimiento Hipótesis: Ciertos países
+tienen una mayor concentración de personas en determinadas áreas de
+conocimiento.
+
 ```{r}
 # Tabla de contingencia
 tabla_pais_area <- table(Data_top10$País, Data_top10$Area.Conocimiento)
@@ -728,9 +767,10 @@ ggplot(Data_top3, aes(x = Area.Conocimiento, fill = País)) +
 
 ```
 
-Relación entre País y Género (Top 10 Países)
-Hipótesis:
-Existen diferencias significativas en la proporción de género entre los top 10 países.
+Relación entre País y Género (Top 10 Países) Hipótesis: Existen
+diferencias significativas en la proporción de género entre los top 10
+países.
+
 ```{r}
 # Tabla de contingencia
 tabla_pais_genero <- table(DataNA$País, DataNA$Género)
@@ -748,9 +788,10 @@ ggplot(Data_top10, aes(x = País, fill = Género)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
-Relación entre Edad y Nivel Académico
-Hipótesis:
-El nivel académico tiende a aumentar con la edad.
+
+Relación entre Edad y Nivel Académico Hipótesis: El nivel académico
+tiende a aumentar con la edad.
+
 ```{r}
 # ANOVA para comparar la Edad media entre los diferentes Niveles Académicos
 anova_edad_nivel <- aov(Edad ~ Nivel.Académico, data = DataNA)
@@ -771,9 +812,9 @@ ggplot(DataNA, aes(x = Nivel.Académico, y = Edad)) +
 
 ```
 
-Relación entre País, Estado Civil, y Género
-Hipótesis:
-Existen diferencias significativas en el estado civil según el género y el país.
+Relación entre País, Estado Civil, y Género Hipótesis: Existen
+diferencias significativas en el estado civil según el género y el país.
+
 ```{r}
 # Visualización
 ggplot(Data_top3, aes(x = Estado.civil, fill = Género)) +
@@ -798,9 +839,9 @@ kable(resultados, col.names = c("País", "P-valor Chi-cuadrado"),
 
 ```
 
-Relación entre Edad y Estado Civil
-Hipótesis:
-La edad tiene un impacto significativo en el estado civil de las personas.
+Relación entre Edad y Estado Civil Hipótesis: La edad tiene un impacto
+significativo en el estado civil de las personas.
+
 ```{r}
 # ANOVA para comparar la Edad media entre los diferentes Estados Civiles
 anova_edad_estado_civil <- aov(Edad ~ Estado.civil, data = DataNA)
@@ -815,5 +856,3 @@ ggplot(DataNA, aes(x = Estado.civil, y = Edad)) +
        y = "Edad (años)")
 
 ```
-
-
