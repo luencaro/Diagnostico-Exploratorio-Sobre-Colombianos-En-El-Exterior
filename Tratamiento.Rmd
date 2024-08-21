@@ -1,6 +1,6 @@
 ---
 title: "Descriptivo"
-author: "Eliana"
+author: "Luis, Andres, Natalia, Jose, Eliana"
 date: "`r Sys.Date()`"
 output: html_document
 ---
@@ -67,6 +67,7 @@ library(skimr)
 ## Importacion, Diagnostico y Tratamiento De Los Datos
 
 ```{r Importacion De Datos}
+Data <- read.csv('colombianos_exterior.csv')
 # Renombrar columnas con caracteres especiales
 names(Data) <- c("País", "Código.ISO.Pais", "Oficina.de.registro", "Grupo.edad", "Edad", 
                     "Area.Conocimiento", "Sub.Area.Conocimiento", "Nivel.Académico", 

@@ -1,0 +1,120 @@
+```{r}
+library(ggplot2)
+```
+
+Vamos a realizar una prueba de chi cuadrado entre las variables pais y etnia, para ver si hay una realcion significativa entre ambas, con:\
+Ho: No existe una asocion entre las variables etnia y pais de residencia.\
+H1: Hay una relacion significativa entre las varibales.
+
+```{r}
+tabla_contingencia <- table(DataNA$País, DataNA$Etnia.de.la.persona)
+
+resultado_chi <- chisq.test(tabla_contingencia)
+
+print(resultado_chi)
+```
+
+En este caso nos da un P-Valor extremadamente pequeño, lo que sugiere que debemos rechazar nuestra hipotesis nula de que no existe asociacion significativa entre ambas varibles. Y aceptar que en realidad si la hay.\
+Sin embargo R nos arroja una advertencia donde nos dice que la aproximacion del Chi Cuadrado podria ser incorrecto, esto es debido a que exiten celdas en nuestra tabla de contingencia que tienen frecuencias esperadas muy bajas, esto entorpece la aproximacion, y es usual en tablas de contingencias tan grandes como esta, en la que se manejan tantos paises y tantas etnias, por lo que hay un gran numero de combinaciones posibles.
+
+```{r}
+if (resultado_chi$p.value < 0.05) {
+  print("Existe una asociación significativa entre el país de residencia y la etnia.")
+} else {
+  print("No se encuentra una asociación significativa entre el país de residencia y la etnia.")
+}
+```
+
+#Para manejar el problema anteriormente presentado se decidio hacer una simulacion de Monte Carlo, la cual es util cuando las supociciones del chi cuadrado tradicional no se cumplen, por ejemplo en este caso que la tabla de contingencia es bastante grande y hay celdas con frecuencias bastante bajas.
+
+```{r}
+# Prueba de Chi-cuadrado con simulación de Monte Carlo
+resultado_chi_mc <- chisq.test(tabla_contingencia, simulate.p.value = TRUE, B = 10000)
+
+# Ver los resultados
+print(resultado_chi_mc)
+
+```
+
+En este caso volvemos a observar que el P-Valor es extremadamente pequeño, lo que indica que es muy improbable observar una asocioación tan fuerte por azar. Y confirmamos que efectivamente existe una relacion significata entre el pais de residencia y la etnia.
+
+#Ahora veamos si existe una relación entre el país y el area de conocimiento.
+
+```{r}
+tabla_contingencia_area <- table(DataNA$País, DataNA$Area.Conocimiento)
+
+resultado_chiq <- chisq.test(tabla_contingencia_area)
+
+print(resultado_chiq)
+
+```
+
+En este caso nos está ocurriendo exactamento lo mismo que la vez pasada, asi que realizaremos la misma simulación de Monte Carlo.
+
+```{r}
+chisq.test(tabla_contingencia_area, simulate.p.value = TRUE, B = 10000)
+
+```
+
+Con este P-valor pequeño también rechazamos la Hipotesis nula, lo que sugiere que la relacion entre area de conocimiento y pais de residencia tambien es significativa.\
+\
+\
+\
+Veamos ciencias basicas en alemania:
+
+```{r}
+ciencias_basicas <- subset(DataNA, Area.Conocimiento == "MATEMÁTICAS Y CIENCIAS NATURALES" & País == "ALEMANIA")
+
+tabla_ciencias_basicas <- table(ciencias_basicas$Sub.Area.Conocimiento)
+
+print(tabla_ciencias_basicas)
+```
+
+# Realizamos la prueba de Chi-cuadrado para las subáreas de conocimiento de ciencias basicas y el pais alemania.
+
+```{r}
+resultado_chi_ciencias <- chisq.test(tabla_ciencias_basicas)
+
+#Imprimir los resultados de la prueba
+print(resultado_chi_ciencias)
+
+```
+
+Con este P-valor podemos afirmar que hay una relación significativa entre ir a Alemania y estudiar un programa relacionado a las ciencias Basicas.
+
+A continuación un Grafico de barras que nos muestra las frecuencias de cada uno, donde podemos ver que Sub Areas como Biologia , Microbiologia y areas afines tienen mayor relevancia en Alemania.
+
+```{r}
+df_ciencias_basicas <- as.data.frame(tabla_ciencias_basicas)
+
+
+colnames(df_ciencias_basicas) <- c("Sub.Area.Conocimiento", "Conteo")
+
+# Crear el gráfico de barras
+ggplot(df_ciencias_basicas, aes(x = Sub.Area.Conocimiento, y = Conteo, fill = Sub.Area.Conocimiento)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Distribución de Subáreas de Conocimiento en Ciencias Básicas (Alemania)",
+       x = "Subárea de Conocimiento",
+       y = "Número de Personas") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+A continuacion se hace un kruskal wallis para Edad y Etnia
+```{r}
+#Prueba de Kruskal Wallis
+kruskal_test = kruskal.test(DataNA$Edad ~ DataNA$Etnia.de.la.persona)
+print(kruskal_test)
+```
+
+```{r}
+# Crear un boxplot utilizando ggplot2
+ggplot(Data, aes(x = Etnia.de.la.persona, y = Edad, fill = Etnia.de.la.persona)) +
+  geom_boxplot() +
+  labs(x = "Etnia", y = "Edad", title = "Distribución de la Edad por Etnia") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette = "Set3")
+```
+
