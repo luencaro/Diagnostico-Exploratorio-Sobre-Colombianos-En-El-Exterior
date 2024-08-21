@@ -1,0 +1,1493 @@
+---
+title: "Descriptivo"
+author: "Luis Cabarcas, Andres España, Natalia Frias, Jose Menco, Eliana Rodirguez"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Diagnostico Exploratorio Sobre Colombianos En EL Exterior
+
+El censo “Colombianos registrados en el exterior” proporciona un conjunto de datos sobre los ciudadanos colombianos que se han registrado en consulados y embajadas fuera de Colombia. Estos datos, que fueron proporcionados por el Ministerio De Relaciones Exteriores, incluyen detalles demográficos como edad, género, y ubicación de residencia en el extranjero. El propósito principal es entender la distribución de los colombianos en el exterior, lo que puede ayudar en la planificación de políticas y servicios consulares.
+
+## **¿Qué hay en este conjunto de Datos?**
+
+Este estudio incluye las siguientes variables
+
+1.  **País**: Indica el país de residencia de la persona. Cuando no se tienen datos registrados se presenta el texto “(NO REGISTRA)”.
+
+2.  **Código ISO país**: ISO del país de residencia. Cuando no se tienen datos registrados se presenta el texto “(NO REGISTRA)”.
+
+3.  **Oficina de registro**: Consulado donde la persona realizó su registro consular. Cuando no se tienen datos registrados se presenta el texto “(NO REGISTRA)”.
+
+4.  **Grupo edad**: Grupo basado en la edad, como “Primera infancia” (0-5 años) o “Adulto Mayor” (60+).
+
+5.  **Edad (años)**: Edad de la persona, con -1 indicando datos faltantes.
+
+6.  **Área Conocimiento**: Área de conocimiento, con “(NO REGISTRA)” si falta.
+
+7.  **Sub Área Conocimiento**: Subárea específica, con “(NO REGISTRA)” si falta.
+
+8.  **Nivel Académico**: Nivel educativo, con “(NO REGISTRA)” si falta.
+
+9.  **Estado civil**: Estado civil, con “(NO REGISTRA)” si falta.
+
+10. **Género**: Género de la persona, con “(DESCONOCIDO)” si falta.
+
+11. **Etnia de la persona**: Etnia, con “(NO REGISTRA)” si falta.
+
+12. **Estatura (CM)**: Estatura en centímetros, con -1 indicando datos faltantes.
+
+13. **Localización**: Localización geográfica del ciudadano según el país de residencia.
+
+14. **Cantidad de personas**: Número de personas que cumplen con las condiciones demográficas especificadas.
+
+## Objetivos Del Estudio
+
+Analizar las características demográficas y educativas de ciudadanos colombianos en el exterior, con el fin de identificar patrones de residencia, nivel académico, estado civil, género, etnia y área de conocimiento, así como la calidad y completitud de los datos registrados en los consulados.
+
+## Importacion de Librerias
+
+```{r}
+library(gridExtra)
+library(psych)
+library(ggcorrplot)
+library(readxl)
+library(dplyr)
+library(tidyverse)
+library(Amelia)
+library(janitor)
+library(magrittr)
+library(ggplot2)
+library(dplyr)
+library(pastecs)
+library(nortest)
+library(skimr)
+```
+
+## Importacion, Diagnostico y Tratamiento De Los Datos
+
+```{r Importacion De Datos}
+Data <- read.csv('colombianos_exterior.csv')
+# Renombrar columnas con caracteres especiales
+names(Data) <- c("País", "Código.ISO.Pais", "Oficina.de.registro", "Grupo.edad", "Edad", 
+                    "Area.Conocimiento", "Sub.Area.Conocimiento", "Nivel.Académico", 
+                    "Estado.civil", "Género", "Etnia.de.la.persona", "Estatura", 
+                    "Localización", "Cantidad.de.personas")
+dim(D)
+summary(Data)
+str(Data)
+missmap(Data, main="Mapa de Datos Faltantes en Datos crudos")
+
+```
+
+Se observa que inicialmente se tienen 12/14 variables cualitativas y 2/14 cuantitativas, sin embargo, si observamos la variable estatura sabemos que la naturaleza de sus datos es cuantitativa, y esta siendo detectada como una variable cualitativa, por lo tanto se designará manualmente.
+
+### Procesamiento De Los Datos
+
+```{r Procesamiento De Los Datos}
+#Convertir la variable Estatura de caracter a numérico
+Data$Estatura <- as.numeric(Data$Estatura)
+NewData <- Data
+summary(NewData)
+str(NewData)
+
+```
+
+```{r}
+DataNA <- NewData
+
+DataNA$Estatura[DataNA$Estatura==-1]<-NA
+DataNA$Estatura[DataNA$Estatura>270]<-NA
+DataNA$Estatura[DataNA$Estatura<35]<-NA
+
+DataNA$Edad[DataNA$Edad==-1]<-NA
+DataNA$Edad[DataNA$Edad>121]<-NA
+
+# Reemplazar '(NO REGISTRA)' con NA en las columnas especificadas
+columns_to_replace <- c("País", "Código.ISO.Pais", "Oficina.de.registro", "Area.Conocimiento", "Sub.Area.Conocimiento", "Nivel.Académico", "Estado.civil", "Etnia.de.la.persona")
+DataNA[columns_to_replace] <- lapply(DataNA[columns_to_replace], function(x) {
+  x[x == '(NO REGISTRA)'] <- NA
+  return(x)
+})
+
+DataNA$Género[DataNA$Género=='DESCONOCIDO']<-NA
+
+# Calcular el número de NA por columna
+na_counts <- sapply(DataNA, function(x) sum(is.na(x)))
+
+# Calcular el número total de datos por columna
+total_values <- sapply(DataNA, function(x) length(x))
+
+# Calcular el porcentaje de NA por columna con respecto al total de datos en esa columna
+na_percentages_per_column <- (na_counts / total_values) * 100
+
+# Calcular el número total de datos en todo el data frame
+total_data_in_dataframe <- length(unlist(DataNA))
+
+# Calcular el porcentaje de NA en cada columna con respecto al total de datos en toda la muestra
+na_percentages_total <- (na_counts / total_data_in_dataframe) * 100
+
+# Crear un data frame con el número y porcentaje de NA por columna
+na_summary <- data.frame(
+  Variable = names(na_counts),
+  NA_Count = na_counts,
+  Total_Values = total_values,
+  NA_Percentage_Per_Column = na_percentages_per_column,
+  NA_Percentage_Total = na_percentages_total
+)
+
+# Convertir las columnas numéricas a formato decimal
+na_summary$NA_Count <- format(na_summary$NA_Count, scientific = FALSE)
+na_summary$Total_Values <- format(na_summary$Total_Values, scientific = FALSE)
+na_summary$NA_Percentage_Per_Column <- format(na_summary$NA_Percentage_Per_Column, scientific = FALSE)
+na_summary$NA_Percentage_Total <- format(na_summary$NA_Percentage_Total, scientific = FALSE)
+
+# Ordenar el data frame por porcentaje total de NA en orden descendente
+na_summary <- na_summary[order(-as.numeric(na_summary$NA_Percentage_Total)), ]
+
+# Ver el resumen
+print(na_summary)
+
+missmap(DataNA, main="Mapa de Datos Faltantes semiprocesados")
+```
+
+### Pruebas De Normalidad
+
+En este estudio, necesitamos verificar si nuestros datos siguen una distribución normal. Como no conocemos la media ni la desviación estándar de la población, la prueba de Lilliefors es ideal porque permite evaluar la normalidad sin asumir estos parámetros.
+
+```{r Test De Normalidad}
+clean_data <- na.omit(DataNA$Estatura)
+
+# Realizar la prueba de normalidad (Lilliefors)
+resultado_prueba <- lillie.test(clean_data)
+
+print(resultado_prueba)
+
+clean_data_Edad <- na.omit(DataNA$Edad)
+
+# Realizar la prueba de normalidad (Lilliefors)
+resultado_prueba_Edad <- lillie.test(clean_data_Edad)
+
+print(resultado_prueba_Edad)
+```
+
+```{r}
+# Nivel de significancia
+nivel_significancia <- 0.05
+
+# Evaluar la hipótesis
+if (!is.na(resultado_prueba$p.value) && resultado_prueba$p.value < nivel_significancia) {
+  print("Se rechaza la hipótesis nula, lo que sugiere que la variable Estatura no sigue una distribución normal.")
+} else {
+  print("No se rechaza la hipótesis nula, lo que sugiere que la variable Estatura sigue una distribución normal.")
+}
+
+# Evaluar la hipótesis
+if (!is.na(resultado_prueba_Edad$p.value) && resultado_prueba_Edad$p.value < nivel_significancia) {
+  print("Se rechaza la hipótesis nula, lo que sugiere que la variable Edad no sigue una distribución normal.")
+} else {
+  print("No se rechaza la hipótesis nula, lo que sugiere que la variable Edad sigue una distribución normal.")
+}
+```
+
+```{r QQ-Plots}
+# Configurar el área de gráficos para mostrar 1 fila y 3 columnas
+par(mfrow = c(1, 3)) 
+
+# Crear el gráfico QQ para la variable Estatura
+qqnorm(DataNA$Estatura, main = "QQ Plot para la variable Estatura")
+qqline(DataNA$Estatura, col = "red", lwd = 2)
+
+# Crear el gráfico QQ para la variable Edad
+qqnorm(DataNA$Edad, main = "QQ Plot para la variable Edad")
+qqline(DataNA$Edad, col = "red", lwd = 2)
+
+# Crear el gráfico QQ para la Cantidad de personas
+qqnorm(DataNA$Cantidad.de.personas, main = "QQ Plot para la Cantidad de personas")
+qqline(DataNA$Cantidad.de.personas, col = "red", lwd = 2)
+
+# Restablecer la configuración de gráficos a la predeterminada (opcional)
+par(mfrow = c(1, 1))
+```
+
+```{r}
+# Definir la función para aplicar el test Lilliefors
+lilliefors_test <- function(x) {
+  # Eliminar NA antes de realizar la prueba
+  clean_data <- na.omit(x)
+  # Aplicar el test Lilliefors y extraer el p-value
+  result <- lillie.test(clean_data)
+  return(result$p.value)
+}
+
+# Aplicar la prueba de Lilliefors a todas las variables numéricas
+normality_tests <- DataNA %>%
+  summarise(across(where(is.numeric), ~ lilliefors_test(.x))) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "P-Value")
+
+# Agregar una columna indicando si los datos son normales o no
+normality_tests <- normality_tests %>%
+  mutate(Normal = ifelse(`P-Value` < 0.05, "No", "Sí"))
+
+# Mostrar los resultados
+print(normality_tests)
+```
+
+### LimpiezaDe Datos
+
+```{r Limpieza}
+# Función para rellenar variables cuantitativas con la mediana
+rellenar_con_mediana <- function(x) {
+  x[is.na(x)] <- median(x, na.rm = TRUE)
+  return(x)
+}
+
+# Función para calcular la moda
+calcular_moda <- function(x) {
+  uniq_vals <- unique(na.omit(x))
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+# Función para rellenar NA en variables cualitativas con la moda
+rellenar_con_moda <- function(x) {
+  moda <- calcular_moda(x)
+  x[is.na(x)] <- moda
+  return(x)
+}
+
+DataNA <- DataNA %>%
+  mutate(across(where(is.numeric), rellenar_con_mediana)) %>%
+  mutate(across(where(is.character), rellenar_con_moda)) %>%
+  mutate(across(where(is.factor), ~ as.character(.) %>% rellenar_con_moda() %>% as.factor()))
+
+```
+
+```{r Visualizacion De Datos Limpios}
+names(DataNA)
+summary(DataNA)
+str(DataNA)
+dim(DataNA)
+# Verificar que no haya NA en el nuevo dataframe
+missmap(DataNA, main="Mapa de Datos Faltantes")
+```
+
+```{r QQ-Plot Limpios}
+# Configurar el área de gráficos para mostrar 1 fila y 3 columnas
+par(mfrow = c(1, 3)) 
+
+# Crear el gráfico QQ para la variable Estatura
+qqnorm(DataNA$Estatura, main = "QQ Plot para la variable Estatura")
+qqline(DataNA$Estatura, col = "red", lwd = 2)
+
+# Crear el gráfico QQ para la variable Edad
+qqnorm(DataNA$Edad, main = "QQ Plot para la variable Edad")
+qqline(DataNA$Edad, col = "red", lwd = 2)
+
+# Crear el gráfico QQ para la Cantidad de personas
+qqnorm(DataNA$Cantidad.de.personas, main = "QQ Plot para la Cantidad de personas")
+qqline(DataNA$Cantidad.de.personas, col = "red", lwd = 2)
+```
+
+```{r Curvas de Normalidad}
+# Restablecer la configuración de gráficos a la predeterminada (opcional)
+par(mfrow = c(1, 1))
+
+# Eliminar los NA de la columna Estatura (antes de la limpieza)
+estatura <- na.omit(Data$Estatura)
+
+# Graficar el histograma
+hist(estatura, breaks = 30, probability = TRUE, main = "Histograma con Curva Normal", xlab = "Estatura", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+lines(density(estatura), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura <- mean(estatura)
+sd_estatura <- sd(estatura)
+
+# Crear la secuencia de valores para la curva normal
+x <- seq(min(estatura), max(estatura), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y <- dnorm(x, mean = mean_estatura, sd = sd_estatura)
+lines(x, y, col = "blue", lwd = 2)
+
+```
+
+```{r}
+# Eliminar los NA de la columna Estatura (después de la limpieza)
+estatura <- na.omit(DataNA$Estatura)
+
+# Graficar el histograma
+hist(estatura, breaks = 30, probability = TRUE, main = "Histograma con Curva Normal", xlab = "Estatura", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+lines(density(estatura), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura <- mean(estatura)
+sd_estatura <- sd(estatura)
+
+# Crear la secuencia de valores para la curva normal
+x <- seq(min(estatura), max(estatura), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y <- dnorm(x, mean = mean_estatura, sd = sd_estatura)
+lines(x, y, col = "blue", lwd = 2)
+```
+
+```{r}
+# Configurar la disposición de las gráficas en una fila y dos columnas
+par(mfrow = c(1, 2))
+
+# Primera gráfica (antes de la limpieza)
+# Eliminar los NA de la columna Estatura (antes de la limpieza)
+estatura_antes <- na.omit(Data$Estatura)
+
+# Graficar el histograma
+hist(estatura_antes, breaks = 30, probability = TRUE, main = "Antes de la Limpieza", xlab = "Estatura", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+#lines(density(estatura_antes), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura_antes <- mean(estatura_antes)
+sd_estatura_antes <- sd(estatura_antes)
+
+# Crear la secuencia de valores para la curva normal
+x_antes <- seq(min(estatura_antes), max(estatura_antes), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y_antes <- dnorm(x_antes, mean = mean_estatura_antes, sd = sd_estatura_antes)
+lines(x_antes, y_antes, col = "blue", lwd = 2)
+
+# Segunda gráfica (después de la limpieza)
+# Eliminar los NA de la columna Estatura (después de la limpieza)
+estatura_despues <- na.omit(DataNA$Estatura)
+
+# Graficar el histograma
+hist(estatura_despues, breaks = 30, probability = TRUE, main = "Después de la Limpieza", xlab = "Estatura", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+#lines(density(estatura_despues), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura_despues <- mean(estatura_despues)
+sd_estatura_despues <- sd(estatura_despues)
+
+# Crear la secuencia de valores para la curva normal
+x_despues <- seq(min(estatura_despues), max(estatura_despues), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y_despues <- dnorm(x_despues, mean = mean_estatura_despues, sd = sd_estatura_despues)
+lines(x_despues, y_despues, col = "blue", lwd = 2)
+```
+
+```{r}
+# Restablecer la disposición de las gráficas a una única por ventana
+par(mfrow = c(1, 1))
+```
+
+### Normalizacion De Los Datos
+
+Se ralizara la normalizacion de los datos mediante transformacion logaritmica. En la normalización de datos solo se tomarán en cuenta las variables Edad y Cantidad de personas, ya que debido al alto porcentaje de datos irregulares en la variable estatura, se ha decidio sacarla del estudio. Veamos entonces el comportamiento de las variables Edad y Cantidad de personas.
+
+```{r}
+# Configurar la disposición de las gráficas en una fila y dos columnas
+par(mfrow = c(1, 2))
+
+# Eliminar los NA de la columna Edad
+estatura_antes <- na.omit(Data$Edad)
+
+# Graficar el histograma
+hist(estatura_antes, breaks = 30, probability = TRUE, main = "Distribución Edad", xlab = "Edad", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+#lines(density(estatura_antes), col = "red", lwd = 2)
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura_antes <- mean(estatura_antes)
+sd_estatura_antes <- sd(estatura_antes)
+
+# Crear la secuencia de valores para la curva normal
+x_antes <- seq(min(estatura_antes), max(estatura_antes), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y_antes <- dnorm(x_antes, mean = mean_estatura_antes, sd = sd_estatura_antes)
+lines(x_antes, y_antes, col = "blue", lwd = 2)
+
+
+# Eliminar los NA de la columna cantidad de personas
+estatura_despues <- na.omit(DataNA$Cantidad.de.personas)
+
+# Graficar el histograma
+hist(estatura_despues, breaks = 30, probability = TRUE, main = "Distribución Cantidad de personas", xlab = "Cantidad de personas", col = "lightblue")
+
+# Agregar la curva de densidad de los datos
+#lines(density(estatura_despues), col = "red", lwd = 2)
+
+
+# Calcular la media y desviación estándar de los datos
+mean_estatura_despues <- mean(estatura_despues)
+sd_estatura_despues <- sd(estatura_despues)
+
+# Crear la secuencia de valores para la curva normal
+x_despues <- seq(min(estatura_despues), max(estatura_despues), length = 100)
+
+# Agregar la curva de la distribución normal teórica
+y_despues <- dnorm(x_despues, mean = mean_estatura_despues, sd = sd_estatura_despues)
+lines(x_despues, y_despues, col = "blue", lwd = 2)
+
+```
+
+```{r}
+# Restablecer la disposición de las gráficas a una única por ventana
+par(mfrow = c(1, 1))
+```
+
+```{r Prueba LiLi para Edad Limpio}
+clean_data <- na.omit(DataNA$Edad)
+
+# Realizar la prueba de normalidad (Lilliefors)
+resultado_prueba <- lillie.test(clean_data)
+
+print(resultado_prueba)
+```
+
+```{r Prueba LiLi para Personas Limpio}
+clean_data <- na.omit(DataNA$Cantidad.de.personas)
+
+# Realizar la prueba de normalidad (Lilliefors)
+resultado_prueba <- lillie.test(clean_data)
+
+print(resultado_prueba)
+```
+
+```{r Trabsformacion Logaritmica Edad}
+# Aplicar la transformación logarítmica a la columna Edad (sumar 1 para evitar problemas con log(0))
+DataNA$Transf_Log <- log(DataNA$Edad + 1)
+
+# Configurar el área de gráficos para mostrar dos histogramas lado a lado
+par(mfrow = c(1, 2))  
+
+# Graficar el histograma original de la variable Edad
+hist(DataNA$Edad, main = "Histograma Original", xlab = "Edad", col = "lightblue", breaks = 20)
+
+# Graficar el histograma de la variable transformada logarítmicamente
+hist(DataNA$Transf_Log, main = "Histograma Transformado (Log)", xlab = "Edad Transformada", col = "lightgreen", breaks = 20)
+```
+
+```{r}
+# Restaurar configuración de gráficos a una sola ventana (opcional)
+par(mfrow = c(1, 1))
+```
+
+#### Prueba Lilifors Para La Edad Despues De La Transformacion Logaritmica
+
+```{r Prueba LiLi para Edad_Log}
+# Aplicar la prueba de Lilliefors a la variable original Edad
+lilliefors_original <- lillie.test(DataNA$Edad)
+
+# Aplicar la prueba de Lilliefors a la variable transformada Transf_Log
+lilliefors_transf_log <- lillie.test(DataNA$Transf_Log)
+
+# Imprimir los resultados de la prueba
+print(lilliefors_original)
+print(lilliefors_transf_log)
+```
+
+#### Prueba Lilifors Para La Variable Cantidad De Personas Despues De La Transformacion Logaritmica
+
+```{r Tranformacio Log Para personas}
+# Aplicar la transformación logarítmica a la columna Edad (sumar 1 para evitar problemas con log(0))
+DataNA$Transf_Log <- log(DataNA$Cantidad.de.personas + 1)
+
+# Configurar el área de gráficos para mostrar dos histogramas lado a lado
+par(mfrow = c(1, 2))  
+
+# Graficar el histograma original de la variable Edad
+hist(DataNA$Cantidad.de.personas, main = "Histograma Original", xlab = "Cantidad.de.personas", col = "lightblue", breaks = 20)
+
+# Graficar el histograma de la variable transformada logarítmicamente
+hist(DataNA$Transf_Log, main = "Histograma Transformado (Log)", xlab = "Cantidad.de.personas transformada", col = "lightgreen", breaks = 20)
+```
+
+```{r}
+# Restaurar configuración de gráficos a una sola ventana (opcional)
+par(mfrow = c(1, 1))
+```
+
+```{r Prueba LiLi para Personas_Log}
+# Aplicar la prueba de Lilliefors a la variable original Cantidad.de.personas
+lilliefors_original <- lillie.test(DataNA$Cantidad.de.personas)
+
+# Aplicar la prueba de Lilliefors a la variable transformada Transf_Log
+lilliefors_transf_log <- lillie.test(DataNA$Transf_Log)
+
+# Imprimir los resultados de la prueba
+print(lilliefors_original)
+
+print(lilliefors_transf_log)
+```
+
+Notamos que la transformación logarítmica no ha logrado mejorar el ajuste a una distribución normal para ninguna de las variables.
+
+# Estadistica Descriptiva
+
+```{r Importacion De Librerias}
+#install.packages("kableExtra")
+#install.packages("ggthemes")
+#install.packages("plotly")
+#install.packages("tidyverse")
+#install.packages("broom")
+library(kableExtra)
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(ggthemes)
+library(plotly)
+library(tidyverse)
+library(broom)
+
+```
+
+#Analisis Univariado.
+
+```{r}
+# Número de países únicos
+num_paises <- length(unique(DataNA$País))
+print(paste("El numero total de paises es:" , num_paises))
+
+```
+
+Ya la cantidad de paises que se encuentran en la base de datos es numerosa, no se verá bien en un gráfico, por lo tanto solo visualizaremos el top 20.
+
+Pais (Top 20).
+
+```{r}
+# Filtrar los datos para los 10 países con más registros
+top_10_paises <- DataNA %>%
+  count(País) %>%
+  top_n(10, n) %>%
+  pull(País)
+
+Data_top10 <- DataNA %>%
+  filter(País %in% top_10_paises)
+
+#Filtrar los top 3 países
+top_3_paises <- DataNA %>%
+  count(País) %>%
+  top_n(3, n) %>%
+  pull(País)
+
+Data_top3 <- DataNA %>%
+  filter(País %in% top_3_paises)
+
+# Calcular frecuencias de países
+pais_frecuencia <- DataNA %>%
+  group_by(País) %>%
+  summarise(Frecuencia = n()) %>%
+  arrange(desc(Frecuencia))
+
+# Filtrar los top 20 países
+top_20_paises <- pais_frecuencia %>% top_n(20, wt = Frecuencia)
+
+# Gráfico de barras ordenadas para los top 20 países
+ggplot(top_20_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
+  geom_bar(stat = "identity", fill = "#3FA0FFFF") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10)) +
+  labs(title = "Top 20 Países con Más Colombianos Registrados", x = "País", y = "Cantidad")
+
+
+```
+
+```{r}
+# Gráfico de barras ordenadas para los top 20 países con escala logarítmica en Y
+ggplot(top_20_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
+  geom_bar(stat = "identity", fill = "#3FA0FFFF") +
+  scale_y_log10() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10)) +
+  labs(title = "Top 20 Países con Más Colombianos Registrados (Escala Logarítmica)", 
+       x = "País", y = "Cantidad (log10)")
+
+```
+
+Pais(Top 3).
+
+```{r}
+# Obtener el top 3 de países
+top_3_paises <- pais_frecuencia %>% top_n(3, wt = Frecuencia)
+
+# Mostrar el top 3
+print(top_3_paises)
+
+#Hice gráfico de barras, pero no se si quieran uno circular.
+
+ggplot(top_3_paises, aes(x = reorder(País, -Frecuencia), y = Frecuencia)) +
+  geom_bar(stat = "identity", fill = "#3FA0FFFF") +  # Color azul personalizado
+  geom_text(aes(label = Frecuencia), vjust = -0.3) +  # Etiquetas encima de las barras
+  labs(title = "Top 3 Países con Más Colombianos Registrados", 
+       x = "País", 
+       y = "Cantidad") +
+  theme_minimal() +  # Tema minimalista
+  theme(plot.title = element_text(hjust = 0.5),  # Centrar el título
+        axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar las etiquetas del eje x
+
+```
+
+Grupos de edad (Total).
+
+```{r}
+
+tabla_edad <- DataNA %>%
+  group_by(Grupo.edad) %>%
+  summarise(Frecuencia = n()) %>%
+  mutate(Porcentaje = round((Frecuencia / sum(Frecuencia)) * 100, 2))
+
+# Mostrar la tabla usando kableExtra
+kable(tabla_edad, col.names = c("Grupo de Edad", "Frecuencia", "Porcentaje (%)"), 
+      caption = "Distribución por Grupo de Edad") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped","bordered", "responsive", "hover", "condensed"))
+
+```
+
+Grafico Barras Grupo Edad.
+
+```{r}
+#Grafico de Barras
+ggplot(DataNA, aes(x = Grupo.edad)) +
+  geom_bar(fill = "#3FA0FFFF", color = "black") +  # Color de las barras y bordes
+  labs(
+    title = "Distribución por Grupo de Edad",
+    x = "Grupo de Edad",
+    y = "Cantidad"
+  ) +
+  theme_minimal() +  # Tema más limpio
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Ángulo del texto en el eje x
+    plot.title = element_text(hjust = 0.5)  # Centrar el título
+  )
+
+```
+
+Grupos de edad (Top 3). Tabla top 3.
+
+```{r}
+
+# Crear la tabla de frecuencias y porcentajes por grupo de edad para los top 3 países
+tabla_gedad_top3 <- Data_top3 %>%
+  group_by(Grupo.edad) %>%
+  summarise(Frecuencia = n()) %>%
+  mutate(Porcentaje = round((Frecuencia / sum(Frecuencia)) * 100, 2))
+
+# Mostrar la tabla usando kableExtra
+kable(tabla_gedad_top3, col.names = c("Grupo de Edad", "Frecuencia", "Porcentaje (%)"), 
+      caption = "Distribución por Grupo de Edad en el Top 3 de Países") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "bordered", "responsive", "hover", "condensed"))
+
+
+```
+
+Grafico de Barras.
+
+```{r}
+
+# Paso 1: Encontrar los 3 países con la mayor cantidad de personas
+top_countries <- DataNA %>%
+  group_by(País) %>%
+  summarise(Total_Personas = sum(Cantidad.de.personas, na.rm = TRUE)) %>%
+  top_n(3, Total_Personas) %>%
+  pull(País)
+
+# Paso 2: Filtrar los datos para estos países
+Data_top3 <- DataNA %>%
+  filter(País %in% top_countries)
+
+# Tabla
+ggplot(Data_top3, aes(x = Grupo.edad, fill = País)) +
+  geom_bar(position = "dodge", stat = "count") +
+  labs(title = "Distribución por Edad en los Top 3 Países",
+       x = "Grupo de Edad",
+       y = "Cantidad de Personas") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.title = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotar las etiquetas del eje x 45 grados
+    legend.position = "right"  # Colocar la leyenda a la derecha
+  )
+
+```
+
+Edad (Total).
+
+```{r}
+# Resumen estadístico de la variable Edad en el conjunto de datos completo
+resumen_edad_total <- DataNA %>%
+  summarise(
+    Minimo = min(Edad, na.rm = TRUE),
+    Primer_Cuartil = quantile(Edad, 0.25, na.rm = TRUE),
+    Mediana = median(Edad, na.rm = TRUE),
+    Media = mean(Edad, na.rm = TRUE),
+    Tercer_Cuartil = quantile(Edad, 0.75, na.rm = TRUE),
+    Maximo = max(Edad, na.rm = TRUE),
+    Desviacion_Estandar = sd(Edad, na.rm = TRUE)
+  )
+
+# Mostrar el resumen estadístico
+print(resumen_edad_total)
+
+# Histograma de la variable Edad en el conjunto de datos completo
+ggplot(DataNA, aes(x = Edad)) +
+  geom_histogram(binwidth = 5, fill = "#3FA0FFFF", color = "black") +
+  labs(
+    title = "Distribución de la Edad (Total)",
+    x = "Edad (años)",
+    y = "Frecuencia"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12)
+  )
+
+
+# Boxplot horizontal para la variable Edad en el conjunto de datos completo
+ggplot(DataNA, aes(x = Edad)) +
+  geom_boxplot(fill = "#3FA0FFFF", color = "black", outlier.color = "red", outlier.shape = 16, outlier.size = 2) +
+  labs(
+    title = "Distribución de la Edad",
+    x = "Edad (años)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+
+```
+
+Edad (Top 3).
+
+```{r}
+
+# Resumen estadístico de la variable Edad en el top 3 de países
+resumen_edad_top <- Data_top3 %>%
+  summarise(
+    Minimo = min(Edad, na.rm = TRUE),
+    Primer_Cuartil = quantile(Edad, 0.25, na.rm = TRUE),
+    Mediana = median(Edad, na.rm = TRUE),
+    Media = mean(Edad, na.rm = TRUE),
+    Tercer_Cuartil = quantile(Edad, 0.75, na.rm = TRUE),
+    Maximo = max(Edad, na.rm = TRUE),
+    Desviacion_Estandar = sd(Edad, na.rm = TRUE)
+  )
+
+# Mostrar el resumen estadístico
+print(resumen_edad_top)
+
+# Histograma de la variable Edad en el top 3 de países
+ggplot(Data_top3, aes(x = Edad)) +
+  geom_histogram(binwidth = 5, fill = "#3FA0FFFF", color = "black") +
+  labs(
+    title = "Distribución de la Edad en el Top 3 de Países",
+    x = "Edad (años)",
+    y = "Frecuencia"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12)
+  )
+
+# Boxplot horizontal para la variable Edad en el top 3 de países
+ggplot(Data_top3, aes(x = Edad)) +
+  geom_boxplot(fill = "#3FA0FFFF", color = "black", outlier.color = "red", outlier.shape = 16, outlier.size = 2) +
+  labs(
+    title = "Distribución de la Edad en el Top 3 de Países",
+    x = "Edad (años)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+
+```
+
+Área de Conocimiento (Total).
+
+```{r}
+
+# Calcular la tabla de frecuencia y porcentaje
+tabla_area_conocimiento <- DataNA %>%
+  group_by(Area.Conocimiento) %>%
+  summarise(
+    Frecuencia = n(),
+    Porcentaje = round((n() / nrow(DataNA)) * 100, 2)
+  ) %>%
+  arrange(desc(Frecuencia))
+
+# Mostrar la tabla de frecuencia y porcentaje con kable
+kable(tabla_area_conocimiento, col.names = c("Área de Conocimiento", "Frecuencia", "Porcentaje (%)"),
+      caption = "Distribución por Área de Conocimiento") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(2, width = "5em") %>%
+  column_spec(3, width = "5em")
+
+```
+
+```{r}
+
+# Gráfico de barras
+ggplot(DataNA, aes(x = reorder(Area.Conocimiento, -table(Area.Conocimiento)[Area.Conocimiento]), y = ..count..)) +
+  geom_bar(fill = "#3FA0FFFF", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribución por Área de Conocimiento",
+       x = "Área de Conocimiento",
+       y = "Cantidad") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+  )
+
+
+```
+
+Área de Conocimiento (Top 3).
+
+```{r}
+tabla_area_conocimiento <- Data_top3 %>%
+  group_by(Area.Conocimiento) %>%
+  summarise(
+    Frecuencia = n(),
+    Porcentaje = round((n() / nrow(Data_top3)) * 100, 2)
+  ) %>%
+  arrange(desc(Frecuencia))
+
+# Mostrar la tabla de frecuencia y porcentaje con kable
+kable(tabla_area_conocimiento, col.names = c("Área de Conocimiento", "Frecuencia", "Porcentaje (%)"),
+      caption = "Distribución por Área de Conocimiento en los Top 3 Países") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(2, width = "5em") %>%
+  column_spec(3, width = "5em")
+```
+
+```{r}
+# Gráfico de barras
+ggplot(Data_top3, aes(x = reorder(Area.Conocimiento, -table(Area.Conocimiento)[Area.Conocimiento]), y = ..count..)) +
+  geom_bar(fill = "#3FA0FFFF", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribución por Área de Conocimiento",
+       x = "Área de Conocimiento",
+       y = "Cantidad") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+  )
+```
+
+Nivel Académico (Total). Tabla.
+
+```{r}
+# Calcular la tabla de frecuencia
+tabla_frecuencia <- DataNA %>%
+  group_by(Nivel.Académico) %>%
+  summarise(
+    Frecuencia = n(),
+    Porcentaje = round((n() / nrow(DataNA)) * 100, 2)
+  ) %>%
+  arrange(desc(Frecuencia))
+
+# Mostrar la tabla de frecuencia con kable
+kable(tabla_frecuencia, col.names = c("Nivel Académico", "Frecuencia", "Porcentaje (%)"),
+      caption = "Distribución por Nivel Académico") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(2, width = "5em") %>%
+  column_spec(3, width = "5em")
+```
+
+Barras apilado.
+
+```{r}
+# Definir la paleta de colores
+paleta_colores <- c(
+  "NINGUNO" = "#FFAD72FF",
+  "SIN PROFESIÓN" = "#F76D5EFF",
+  "PRIMARIA" = "#FFE099FF",
+  "BACHILLERATO" = "#FFFFBFFF",
+  "PREGRADO - TÉCNICO PROFESIONAL" = "#E0FFFFFF",
+  "PREGRADO - TECNOLÓGICO" = "#AAF7FFFF",
+  "PREGRADO - PROFESIONAL" = "#72D9FFFF",
+  "POSTGRADO - MAESTRIA" = "#3FA0FFFF",
+  "POSTGRADO - ESPECIALIZACIÓN" = "#264DFFFF",
+  "POSTGRADO - DOCTORADO" = "#290AD8FF",
+  "NO INDICA" = "#A50021FF"
+)
+
+
+# Ordenar los niveles académicos de menor a mayor
+DataNA <- DataNA %>%
+  mutate(Nivel.Académico = factor(Nivel.Académico, 
+                                  levels = c("NO INDICA","NINGUNO", "SIN PROFESIÓN",
+                                             "PRIMARIA", "BACHILLERATO", 
+                                             "PREGRADO - TÉCNICO PROFESIONAL", 
+                                             "PREGRADO - TECNOLÓGICO", 
+                                             "PREGRADO - PROFESIONAL", 
+                                             "POSTGRADO - MAESTRIA", 
+                                             "POSTGRADO - ESPECIALIZACIÓN", 
+                                             "POSTGRADO - DOCTORADO")))
+
+
+
+
+ggplot(DataNA, aes(x = "", fill = Nivel.Académico)) +
+  geom_bar(width = 1, stat = "count") +
+  scale_fill_manual(values = paleta_colores) +  # Aplicar la paleta de colores
+  labs(title = "Distribución por Nivel Académico",
+       x = "",
+       y = "Cantidad",
+       fill = "Nivel Académico") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+
+
+
+```
+
+Nivel Académico (Top 3). Tabla.
+
+```{r}
+# Calcular la tabla de frecuencia
+tabla_frecuencia <- Data_top3 %>%
+  group_by(Nivel.Académico) %>%
+  summarise(
+    Frecuencia = n(),
+    Porcentaje = round((n() / nrow(Data_top3)) * 100, 2)
+  ) %>%
+  arrange(desc(Frecuencia))
+
+# Mostrar la tabla de frecuencia con kable
+kable(tabla_frecuencia, col.names = c("Nivel Académico", "Frecuencia", "Porcentaje (%)"),
+      caption = "Distribución por Nivel Académico") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(2, width = "5em") %>%
+  column_spec(3, width = "5em")
+```
+
+Apilado.
+
+```{r}
+# Ordenar los niveles académicos de menor a mayor
+Data_top3 <- Data_top3 %>%
+  mutate(Nivel.Académico = factor(Nivel.Académico, 
+                                  levels = c("NO INDICA","NINGUNO", "SIN PROFESIÓN",
+                                             "PRIMARIA", "BACHILLERATO", 
+                                             "PREGRADO - TÉCNICO PROFESIONAL", 
+                                             "PREGRADO - TECNOLÓGICO", 
+                                             "PREGRADO - PROFESIONAL", 
+                                             "POSTGRADO - MAESTRIA", 
+                                             "POSTGRADO - ESPECIALIZACIÓN", 
+                                             "POSTGRADO - DOCTORADO")))
+
+
+
+
+ggplot(Data_top3, aes(País, fill = Nivel.Académico)) +
+  geom_bar( stat = "count") +
+  scale_fill_manual(values = paleta_colores) +  # Aplicar la paleta de colores
+  labs(title = "Distribución por Nivel Académico",
+       x = "",
+       y = "Cantidad",
+       fill = "Nivel Académico") +
+  theme_bw() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
+
+```
+
+Estado Civil (Total). Tabla.
+
+```{r}
+# Tabla de frecuencia y porcentaje para Estado Civil
+tabla_estado_civil <- DataNA%>%
+  group_by(Estado.civil) %>%
+  summarise(
+    Frecuencia = n(),
+    Porcentaje = round((n() / nrow(DataNA)) * 100, 2)
+  ) %>%
+  arrange(desc(Frecuencia))
+
+# Mostrar la tabla usando kable
+kable(tabla_estado_civil, col.names = c("Estado Civil", "Frecuencia", "Porcentaje (%)"),
+      caption = "Distribución por Estado Civil") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(2, width = "5em") %>%
+  column_spec(3, width = "5em")
+
+```
+
+```{r}
+# Gráfico de barras
+ggplot(DataNA, aes(x = reorder(Estado.civil, -table(Estado.civil)[Estado.civil]))) +
+  geom_bar(fill = "#3FA0FFFF", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribución por Estado Civil (Total)",
+       x = "Estado Civil",
+       y = "Cantidad") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10)
+  )
+
+```
+
+Estado Civil (Top 3).
+
+```{r}
+# Gráfico de barras para Estado Civil en el top 3 de países
+ggplot(Data_top3, aes(x = reorder(Estado.civil, -table(Estado.civil)[Estado.civil]), fill = País)) +
+  geom_bar(position = "dodge", color = "black") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Distribución por Estado Civil en el Top 3 de Países",
+       x = "Estado Civil",
+       y = "Cantidad",
+       fill = "País") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10),
+    legend.position = "top"
+  )
+
+```
+
+Género (Total).
+
+```{r}
+# Tabla de frecuencia y porcentaje para Género
+tabla_genero <- DataNA %>%
+  group_by(Género) %>%
+  summarise(
+    Frecuencia = n(),
+    Porcentaje = round((n() / nrow(DataNA)) * 100, 2)
+  ) %>%
+  arrange(desc(Frecuencia))
+
+# Mostrar la tabla usando kable
+kable(tabla_genero, col.names = c("Género", "Frecuencia", "Porcentaje (%)"),
+      caption = "Distribución por Género") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "15em") %>%
+  column_spec(2, width = "5em") %>%
+  column_spec(3, width = "5em")
+
+
+# Gráfico de barras
+ggplot(DataNA, aes(x = Género)) +
+  geom_bar() +
+  labs(title = "Distribución por Género", x = "Género", y = "Cantidad")
+
+```
+
+```{r}
+# Calcular frecuencias y porcentajes
+data_summary <- DataNA %>%
+  group_by(Género) %>%
+  summarise(Frecuencia = n()) %>%
+  mutate(Porcentaje = round((Frecuencia / sum(Frecuencia)) * 100, 2))
+
+# Crear el gráfico de pastel
+fig <- plot_ly(data_summary, 
+                labels = ~Género, 
+                values = ~Frecuencia, 
+                type = 'pie',
+                textinfo = 'label+percent',
+                marker = list(colors = c("#DD75D3FF", "#7E8CF3FF", "#719F47FF")),
+                showlegend = TRUE) %>%
+  layout(title = 'Distribución por Género',
+         xaxis = list(showgrid = TRUE, zeroline = TRUE),
+         yaxis = list(showgrid = TRUE, zeroline = TRUE))
+
+# Mostrar el gráfico
+fig
+
+```
+
+Género (Top 3).
+
+```{r}
+# Gráfico de barras apiladas para Género en el top 3 de países
+ggplot(Data_top3, aes(x = reorder(Género, -table(Género)[Género]), fill = País)) +
+  geom_bar(position = "dodge", color = "black") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Distribución por Género en el Top 3 de Países",
+       x = "Género",
+       y = "Cantidad",
+       fill = "País") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    legend.position = "top"
+  )
+
+```
+
+Etnia de la Persona (Total).
+
+```{r}
+# Tabla de frecuencia
+table(DataNA$Etnia.de.la.persona)
+
+# Gráfico de barras horizontal para Etnia
+ggplot(DataNA, aes(x = reorder(Etnia.de.la.persona, -table(Etnia.de.la.persona)[Etnia.de.la.persona]))) +
+  geom_bar(fill = "#719F47FF", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribución por Etnia de la Persona",
+       x = "Cantidad",
+       y = "Etnia") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10)
+  ) +
+  coord_flip()  # Voltear para una lectura más fácil
+
+
+```
+
+Etnia de la Persona (Top 3).
+
+```{r}
+# Gráfico de barras apiladas horizontal para Etnia en el top 3 de países
+ggplot(Data_top3, aes(x = reorder(Etnia.de.la.persona, -table(Etnia.de.la.persona)[Etnia.de.la.persona]), fill = País)) +
+  geom_bar(position = "dodge", color = "black") +
+  scale_fill_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Distribución por Etnia en el Top 3 de Países",
+       x = "Etnia",
+       y = "Cantidad",
+       fill = "País") +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    legend.position = "top"
+  ) +
+  coord_flip()  # Voltear para una lectura más fácil
+
+```
+
+```{r}
+
+```
+
+#Analisis Multivariado. Relación entre Género y Nivel Académico Esto está pendiente, no confio en el resultado, me parece que tenemos un falso positivo, Error tipo 1, plis soluciones. Hipótesis: Existen diferencias significativas en el nivel académico alcanzado entre géneros.
+
+```{r}
+# Tabla de contingencia
+tabla_genero_academico <- table(DataNA$Género, DataNA$Nivel.Académico)
+print(tabla_genero_academico)
+# Prueba de Chi-cuadrado
+prueba_chi_genero_academico <- chisq.test(tabla_genero_academico)
+prueba_chi_genero_academico
+# Verificar conteos esperados
+prueba_chi_genero_academico$expected
+
+# Visualización
+ggplot(DataNA, aes(x = Nivel.Académico, fill = Género)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("#DD75D3FF", "#7E8CF3FF", "#719F47FF")) +
+  labs(title = "Distribución del Nivel Académico por Género",
+       x = "Nivel Académico",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Relación entre País y Área de Conocimiento Hipótesis: Ciertos países tienen una mayor concentración de personas en determinadas áreas de conocimiento.
+
+```{r}
+# Tabla de contingencia
+tabla_pais_area <- table(Data_top10$País, Data_top10$Area.Conocimiento)
+
+# Prueba de Chi-cuadrado
+prueba_chi_pais_area <- chisq.test(tabla_pais_area)
+prueba_chi_pais_area
+
+# Visualización
+ggplot(Data_top10, aes(x = Area.Conocimiento, fill = País)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribución del Área de Conocimiento por País (Top 10 Países)",
+       x = "Área de Conocimiento",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+#Esto es para ver el top 3
+# Tabla de contingencia top 3
+tabla_pais_area <- table(Data_top3$País, Data_top3$Area.Conocimiento)
+
+# Prueba de Chi-cuadrado
+prueba_chi_pais_area <- chisq.test(tabla_pais_area)
+prueba_chi_pais_area
+
+# Visualización
+ggplot(Data_top3, aes(x = Area.Conocimiento, fill = País)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribución del Área de Conocimiento por País (Top 3 Países)",
+       x = "Área de Conocimiento",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Relación entre País y Género (Top 10 Países) Hipótesis: Existen diferencias significativas en la proporción de género entre los top 10 países.
+
+```{r}
+# Tabla de contingencia
+tabla_pais_genero <- table(DataNA$País, DataNA$Género)
+
+# Prueba de Chi-cuadrado
+prueba_chi_pais_genero <- chisq.test(tabla_pais_genero)
+prueba_chi_pais_genero
+
+# Visualización
+ggplot(Data_top10, aes(x = País, fill = Género)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribución de Género por País",
+       x = "País",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Relación entre Edad y Nivel Académico Hipótesis: El nivel académico tiende a aumentar con la edad.
+
+```{r}
+# ANOVA para comparar la Edad media entre los diferentes Niveles Académicos
+anova_edad_nivel <- aov(Edad ~ Nivel.Académico, data = DataNA)
+summary(anova_edad_nivel)
+# Realizar el test post-hoc de Tukey
+tukey_result <- TukeyHSD(anova_edad_nivel)
+
+# Mostrar los resultados
+print(tukey_result)
+
+# Visualización
+ggplot(DataNA, aes(x = Nivel.Académico, y = Edad)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(title = "Distribución de la Edad por Nivel Académico",
+       x = "Nivel Académico",
+       y = "Edad (años)")
+
+```
+
+Relación entre País, Estado Civil, y Género Hipótesis: Existen diferencias significativas en el estado civil según el género y el país.
+
+```{r}
+# Visualización
+ggplot(Data_top3, aes(x = Estado.civil, fill = Género)) +
+  geom_bar(position = "dodge") +
+  facet_wrap(~País) +
+  labs(title = "Estado Civil por Género y País",
+       x = "Estado Civil",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+# Iterar sobre los países para realizar la prueba de Chi-cuadrado
+resultados <- Data_top3 %>%
+  group_by(País) %>%
+  summarise(Chi2 = list(chisq.test(table(Género, Estado.civil))$p.value))
+
+# Mostrar los resultados
+kable(resultados, col.names = c("País", "P-valor Chi-cuadrado"), 
+      caption = "Prueba de Chi-cuadrado por País para la relación entre Género y Estado Civil")
+
+
+```
+
+Relación entre Edad y Estado Civil Hipótesis: La edad tiene un impacto significativo en el estado civil de las personas.
+
+```{r}
+# ANOVA para comparar la Edad media entre los diferentes Estados Civiles
+anova_edad_estado_civil <- aov(Edad ~ Estado.civil, data = DataNA)
+summary(anova_edad_estado_civil)
+
+# Visualización
+ggplot(DataNA, aes(x = Estado.civil, y = Edad)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(title = "Distribución de la Edad por Estado Civil",
+       x = "Estado Civil",
+       y = "Edad (años)")
+
+```
+
+# Estadistica Inferencial
+
+```{r}
+#library(ggplot2)
+```
+
+Vamos a realizar una prueba de chi cuadrado entre las variables pais y etnia, para ver si hay una realcion significativa entre ambas, con:\
+Ho: No existe una asocion entre las variables etnia y pais de residencia.\
+H1: Hay una relacion significativa entre las varibales.
+
+```{r}
+tabla_contingencia <- table(DataNA$País, DataNA$Etnia.de.la.persona)
+
+resultado_chi <- chisq.test(tabla_contingencia)
+
+print(resultado_chi)
+```
+
+En este caso nos da un P-Valor extremadamente pequeño, lo que sugiere que debemos rechazar nuestra hipotesis nula de que no existe asociacion significativa entre ambas varibles. Y aceptar que en realidad si la hay.\
+Sin embargo R nos arroja una advertencia donde nos dice que la aproximacion del Chi Cuadrado podria ser incorrecto, esto es debido a que exiten celdas en nuestra tabla de contingencia que tienen frecuencias esperadas muy bajas, esto entorpece la aproximacion, y es usual en tablas de contingencias tan grandes como esta, en la que se manejan tantos paises y tantas etnias, por lo que hay un gran numero de combinaciones posibles.
+
+```{r}
+if (resultado_chi$p.value < 0.05) {
+  print("Existe una asociación significativa entre el país de residencia y la etnia.")
+} else {
+  print("No se encuentra una asociación significativa entre el país de residencia y la etnia.")
+}
+```
+
+#Para manejar el problema anteriormente presentado se decidio hacer una simulacion de Monte Carlo, la cual es util cuando las supociciones del chi cuadrado tradicional no se cumplen, por ejemplo en este caso que la tabla de contingencia es bastante grande y hay celdas con frecuencias bastante bajas.
+
+```{r}
+# Prueba de Chi-cuadrado con simulación de Monte Carlo
+resultado_chi_mc <- chisq.test(tabla_contingencia, simulate.p.value = TRUE, B = 10000)
+
+# Ver los resultados
+print(resultado_chi_mc)
+
+```
+
+En este caso volvemos a observar que el P-Valor es extremadamente pequeño, lo que indica que es muy improbable observar una asocioación tan fuerte por azar. Y confirmamos que efectivamente existe una relacion significata entre el pais de residencia y la etnia.
+
+#Ahora veamos si existe una relación entre el país y el area de conocimiento.
+
+```{r}
+tabla_contingencia_area <- table(DataNA$País, DataNA$Area.Conocimiento)
+
+resultado_chiq <- chisq.test(tabla_contingencia_area)
+
+print(resultado_chiq)
+
+```
+
+En este caso nos está ocurriendo exactamento lo mismo que la vez pasada, asi que realizaremos la misma simulación de Monte Carlo.
+
+```{r}
+chisq.test(tabla_contingencia_area, simulate.p.value = TRUE, B = 10000)
+
+```
+
+Con este P-valor pequeño también rechazamos la Hipotesis nula, lo que sugiere que la relacion entre area de conocimiento y pais de residencia tambien es significativa.\
+\
+\
+\
+Veamos ciencias basicas en alemania:
+
+```{r}
+ciencias_basicas <- subset(DataNA, Area.Conocimiento == "MATEMÁTICAS Y CIENCIAS NATURALES" & País == "ALEMANIA")
+
+tabla_ciencias_basicas <- table(ciencias_basicas$Sub.Area.Conocimiento)
+
+print(tabla_ciencias_basicas)
+```
+
+# Realizamos la prueba de Chi-cuadrado para las subáreas de conocimiento de ciencias basicas y el pais alemania.
+
+```{r}
+resultado_chi_ciencias <- chisq.test(tabla_ciencias_basicas)
+
+#Imprimir los resultados de la prueba
+print(resultado_chi_ciencias)
+
+```
+
+Con este P-valor podemos afirmar que hay una relación significativa entre ir a Alemania y estudiar un programa relacionado a las ciencias Basicas.
+
+A continuación un Grafico de barras que nos muestra las frecuencias de cada uno, donde podemos ver que Sub Areas como Biologia , Microbiologia y areas afines tienen mayor relevancia en Alemania.
+
+```{r}
+df_ciencias_basicas <- as.data.frame(tabla_ciencias_basicas)
+
+
+colnames(df_ciencias_basicas) <- c("Sub.Area.Conocimiento", "Conteo")
+
+# Crear el gráfico de barras
+ggplot(df_ciencias_basicas, aes(x = Sub.Area.Conocimiento, y = Conteo, fill = Sub.Area.Conocimiento)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Distribución de Subáreas de Conocimiento en Ciencias Básicas (Alemania)",
+       x = "Subárea de Conocimiento",
+       y = "Número de Personas") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+A continuacion se hace un kruskal wallis para Edad y Etnia
+
+```{r}
+#Prueba de Kruskal Wallis
+kruskal_test = kruskal.test(DataNA$Edad ~ DataNA$Etnia.de.la.persona)
+print(kruskal_test)
+```
+
+```{r}
+# Crear un boxplot utilizando ggplot2
+ggplot(Data, aes(x = Etnia.de.la.persona, y = Edad, fill = Etnia.de.la.persona)) +
+  geom_boxplot() +
+  labs(x = "Etnia", y = "Edad", title = "Distribución de la Edad por Etnia") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette = "Set3")
+```
