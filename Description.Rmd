@@ -5,15 +5,20 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 ```{r Importacion De Librerias}
-install.packages("kableExtra")
-install.packages("ggthemes")
-install.packages("plotly")
+#install.packages("kableExtra")
+#install.packages("ggthemes")
+#install.packages("plotly")
+#install.packages("tidyverse")
+#install.packages("broom")
 library(kableExtra)
 library(ggplot2)
 library(dplyr)
 library(gridExtra)
 library(ggthemes)
 library(plotly)
+library(tidyverse)
+library(broom)
+
 ```
 
 #Analisis Univariado.
@@ -446,14 +451,14 @@ Data_top3 <- Data_top3 %>%
 
 
 
-ggplot(Data_top3, aes(x = "", fill = Nivel.Académico)) +
-  geom_bar(width = 1, stat = "count") +
+ggplot(Data_top3, aes(País, fill = Nivel.Académico)) +
+  geom_bar( stat = "count") +
   scale_fill_manual(values = paleta_colores) +  # Aplicar la paleta de colores
   labs(title = "Distribución por Nivel Académico",
        x = "",
        y = "Cantidad",
        fill = "Nivel Académico") +
-  theme_minimal() +
+  theme_bw() +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
     axis.title.x = element_text(face = "bold", size = 12),
@@ -632,8 +637,8 @@ ggplot(Data_top3, aes(x = reorder(Etnia.de.la.persona, -table(Etnia.de.la.person
   scale_fill_brewer(palette = "Set1") +
   theme_minimal() +
   labs(title = "Distribución por Etnia en el Top 3 de Países",
-       x = "Cantidad",
-       y = "Etnia",
+       x = "Etnia",
+       y = "Cantidad",
        fill = "País") +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
@@ -646,19 +651,168 @@ ggplot(Data_top3, aes(x = reorder(Etnia.de.la.persona, -table(Etnia.de.la.person
   coord_flip()  # Voltear para una lectura más fácil
 
 ```
-Cantidad de Personas (Total).
-```{r}
-# Resumen estadístico
-summary(DataNA$Cantidad.de.personas)
 
-# Histograma
-ggplot(DataNA, aes(x = Cantidad.de.personas)) +
-  geom_histogram(binwidth = 10, fill = "green", color = "black") +
-  labs(title = "Distribución de la Cantidad de Personas", x = "Cantidad de Personas", y = "Frecuencia")
+```{r}
+# Filtrar los datos para los 10 países con más registros
+top_10_paises <- DataNA %>%
+  count(País) %>%
+  top_n(10, n) %>%
+  pull(País)
+
+Data_top10 <- DataNA %>%
+  filter(País %in% top_10_paises)
+```
+
+
+#Analisis Multivariado.
+Relación entre Género y Nivel Académico
+Esto está pendiente, no confio en el resultado, me parece que tenemos un falso positivo,
+Error tipo 1, plis soluciones.
+Hipótesis:
+Existen diferencias significativas en el nivel académico alcanzado entre géneros.
+```{r}
+# Tabla de contingencia
+tabla_genero_academico <- table(DataNA$Género, DataNA$Nivel.Académico)
+print(tabla_genero_academico)
+# Prueba de Chi-cuadrado
+prueba_chi_genero_academico <- chisq.test(tabla_genero_academico)
+prueba_chi_genero_academico
+# Verificar conteos esperados
+prueba_chi_genero_academico$expected
+
+# Visualización
+ggplot(DataNA, aes(x = Nivel.Académico, fill = Género)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("#DD75D3FF", "#7E8CF3FF", "#719F47FF")) +
+  labs(title = "Distribución del Nivel Académico por Género",
+       x = "Nivel Académico",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+Relación entre País y Área de Conocimiento
+Hipótesis:
+Ciertos países tienen una mayor concentración de personas en determinadas áreas de conocimiento.
+```{r}
+# Tabla de contingencia
+tabla_pais_area <- table(Data_top10$País, Data_top10$Area.Conocimiento)
+
+# Prueba de Chi-cuadrado
+prueba_chi_pais_area <- chisq.test(tabla_pais_area)
+prueba_chi_pais_area
+
+# Visualización
+ggplot(Data_top10, aes(x = Area.Conocimiento, fill = País)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribución del Área de Conocimiento por País (Top 10 Países)",
+       x = "Área de Conocimiento",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+#Esto es para ver el top 3
+# Tabla de contingencia top 3
+tabla_pais_area <- table(Data_top3$País, Data_top3$Area.Conocimiento)
+
+# Prueba de Chi-cuadrado
+prueba_chi_pais_area <- chisq.test(tabla_pais_area)
+prueba_chi_pais_area
+
+# Visualización
+ggplot(Data_top3, aes(x = Area.Conocimiento, fill = País)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribución del Área de Conocimiento por País (Top 3 Países)",
+       x = "Área de Conocimiento",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
-Cantidad de Personas (Top 3).
+
+Relación entre País y Género (Top 10 Países)
+Hipótesis:
+Existen diferencias significativas en la proporción de género entre los top 10 países.
 ```{r}
+# Tabla de contingencia
+tabla_pais_genero <- table(DataNA$País, DataNA$Género)
+
+# Prueba de Chi-cuadrado
+prueba_chi_pais_genero <- chisq.test(tabla_pais_genero)
+prueba_chi_pais_genero
+
+# Visualización
+ggplot(Data_top10, aes(x = País, fill = Género)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribución de Género por País",
+       x = "País",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Relación entre Edad y Nivel Académico
+Hipótesis:
+El nivel académico tiende a aumentar con la edad.
+```{r}
+# ANOVA para comparar la Edad media entre los diferentes Niveles Académicos
+anova_edad_nivel <- aov(Edad ~ Nivel.Académico, data = DataNA)
+summary(anova_edad_nivel)
+# Realizar el test post-hoc de Tukey
+tukey_result <- TukeyHSD(anova_edad_nivel)
+
+# Mostrar los resultados
+print(tukey_result)
+
+# Visualización
+ggplot(DataNA, aes(x = Nivel.Académico, y = Edad)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(title = "Distribución de la Edad por Nivel Académico",
+       x = "Nivel Académico",
+       y = "Edad (años)")
+
+```
+
+Relación entre País, Estado Civil, y Género
+Hipótesis:
+Existen diferencias significativas en el estado civil según el género y el país.
+```{r}
+# Visualización
+ggplot(Data_top3, aes(x = Estado.civil, fill = Género)) +
+  geom_bar(position = "dodge") +
+  facet_wrap(~País) +
+  labs(title = "Estado Civil por Género y País",
+       x = "Estado Civil",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+# Iterar sobre los países para realizar la prueba de Chi-cuadrado
+resultados <- Data_top3 %>%
+  group_by(País) %>%
+  summarise(Chi2 = list(chisq.test(table(Género, Estado.civil))$p.value))
+
+# Mostrar los resultados
+kable(resultados, col.names = c("País", "P-valor Chi-cuadrado"), 
+      caption = "Prueba de Chi-cuadrado por País para la relación entre Género y Estado Civil")
+
+
+```
+
+Relación entre Edad y Estado Civil
+Hipótesis:
+La edad tiene un impacto significativo en el estado civil de las personas.
+```{r}
+# ANOVA para comparar la Edad media entre los diferentes Estados Civiles
+anova_edad_estado_civil <- aov(Edad ~ Estado.civil, data = DataNA)
+summary(anova_edad_estado_civil)
+
+# Visualización
+ggplot(DataNA, aes(x = Estado.civil, y = Edad)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(title = "Distribución de la Edad por Estado Civil",
+       x = "Estado Civil",
+       y = "Edad (años)")
 
 ```
 
